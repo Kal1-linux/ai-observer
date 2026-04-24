@@ -16,8 +16,10 @@ from mempalace.mcp_server import tool_add_drawer
 import sys, time
 
 data = sys.stdin.read()
-# GUARANTEED: unique ID prevents duplicate failure
-source = '$CAST_FILE-backup-' + str(int(time.time()))
+# GUARANTEED: unique ID + hash prevents duplicate failure
+import hashlib
+content_hash = hashlib.md5(data.encode()).hexdigest()[:8]
+source = '$CAST_FILE-backup-' + str(int(time.time())) + '-' + content_hash
 
 result = tool_add_drawer(
     wing='ai-observer',

@@ -121,7 +121,7 @@ fi
 if [ -z "$JSON" ]; then
     echo "⚠️ Invalid JSON from Q → using fallback"
     
-    JSON=$(jq -n \
+    JSON=$(jq -nc \
         --arg text "$SESSION_TEXT" \
         --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
         '{
@@ -143,9 +143,9 @@ if [ -z "$JSON" ]; then
     echo "📊 Using fallback storage"
 fi
 
-# Local persistence - ALWAYS save
+# Local persistence - ALWAYS save (escape for valid JSON)
 mkdir -p ./failed-sessions
-echo "$JSON" > "./failed-sessions/$(date +%s).json"
+echo "$JSON" | jq -c . > "./failed-sessions/$(date +%s).json" 2>/dev/null || echo "$JSON" > "./failed-sessions/$(date +%s).json"
 
 # FIX 2: GUARANTEED STORAGE - never fail on duplicate
 set +e  # Don't exit on error for storage
@@ -153,11 +153,11 @@ STORAGE_RESULT=$(ssh -o ControlMaster=auto \
     -o ControlPath=/tmp/ssh-mempalace-%r@%h:%p \
     -o ControlPersist=yes \
     root@192.168.1.137 bash <<SSHEOF 2>&1
-cd /root/mempalace && source venv/bin/activate && python3 <<PYEOF
+cd /root/mempalace && source venv/bin/activate && python3 <<'PYEOF'
 from mempalace.mcp_server import tool_add_drawer, tool_kg_add
 import json, time
 
-data = '''$JSON'''
+data = r'''$JSON'''
 parsed = json.loads(data)
 
 # GUARANTEED STORAGE: add unique suffix if duplicate
