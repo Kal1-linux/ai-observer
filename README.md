@@ -36,6 +36,11 @@ That's it! Work normally, and when you exit Q:
 ./search-sessions
 ```
 
+**Option 3: Analytics dashboard**
+```bash
+./stats.sh
+```
+
 ## Replay a session
 
 ```bash
@@ -60,7 +65,11 @@ Direct Storage (SSH → mempalace MCP server)
 
 - `q-observed` - Main script (use this instead of `q chat`)
 - `search-sessions` - Quick search for all sessions
+- `stats.sh` - Analytics dashboard (sessions/day, top tech, trends)
+- `install.sh` - One-command setup for new machines
+- `setup-backup-cron.sh` - Enable automatic daily backups
 - `migrate-mempalace.sh` - Helper for server migration
+- `config.env` - Configuration (server IP, username)
 - `session-*.cast` - Recorded sessions (replayable with asciinema)
 - Memory stored in mempalace at 192.168.1.137
 
@@ -87,6 +96,26 @@ Direct Storage (SSH → mempalace MCP server)
 - **54 sessions** recorded and stored
 - **59+ facts** in knowledge graph
 - **100% reliability** after April 24 fixes
+- **Top tech**: mempalace, SSH, bash, EKS, Kubernetes
+
+## Installation (New Machine)
+
+```bash
+./install.sh
+```
+
+This will:
+- Check dependencies
+- Configure server/username
+- Test SSH connection
+- Create shell alias
+- Make all scripts executable
+
+## Optional: Enable Daily Backups
+
+```bash
+./setup-backup-cron.sh
+```
 
 ## Status
 
