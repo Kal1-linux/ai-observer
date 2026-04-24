@@ -9,6 +9,22 @@ Automatic session recording and memory extraction for Q CLI.
 3. **Stores** in mempalace (both drawer storage + knowledge graph)
 4. **Remembers** across sessions - no need to re-explain context
 
+## Quick Start
+
+```bash
+# 1. Clone and setup
+git clone https://github.com/yourusername/ai-observer.git
+cd ai-observer
+./install.sh
+
+# 2. Configure
+cp config.env.example config.env
+# Edit config.env with your mempalace server IP and username
+
+# 3. Use instead of `q chat`
+./q-observed
+```
+
 ## Usage
 
 Instead of running `q chat`, run:
@@ -17,32 +33,31 @@ Instead of running `q chat`, run:
 ./q-observed
 ```
 
-That's it! Work normally, and when you exit Q:
-- Session is saved as `session-YYYYMMDD-HHMMSS.cast`
-- Key information is automatically extracted and stored in mempalace
-- Facts added to knowledge graph for easy retrieval
-- Next time, Q can recall what you worked on
+Work normally, and when you exit Q:
+- Session saved as `session-YYYYMMDD-HHMMSS.cast`
+- Key information automatically extracted and stored
+- Facts added to knowledge graph
+- Next time, Q recalls what you worked on
 
 ## Search past work
 
-**Option 1: Ask Q directly**
+**Ask Q directly:**
 ```
 "What did I work on today?"
 "What tasks did I complete this week?"
 ```
 
-**Option 2: Quick search script**
+**Quick search:**
 ```bash
 ./search-sessions
 ```
 
-**Option 3: Analytics dashboard**
+**Analytics:**
 ```bash
 ./stats.sh
 ```
 
-## Replay a session
-
+**Replay session:**
 ```bash
 asciinema play session-20260424-063356.cast
 ```
@@ -61,24 +76,13 @@ Direct Storage (SSH → mempalace MCP server)
     └─ Knowledge Graph: facts about your work
 ```
 
-## Files
-
-- `q-observed` - Main script (use this instead of `q chat`)
-- `search-sessions` - Quick search for all sessions
-- `stats.sh` - Analytics dashboard (sessions/day, top tech, trends)
-- `install.sh` - One-command setup for new machines
-- `setup-backup-cron.sh` - Enable automatic daily backups
-- `migrate-mempalace.sh` - Helper for server migration
-- `config.env` - Configuration (server IP, username)
-- `session-*.cast` - Recorded sessions (replayable with asciinema)
-- Memory stored in mempalace at 192.168.1.137
-
 ## Requirements
 
-- asciinema (`sudo apt install asciinema` or `brew install asciinema`)
-- Q CLI with mempalace MCP server
-- SSH access to mempalace server (192.168.1.137)
-- Python 3 (for parsing)
+- **asciinema** - `sudo apt install asciinema` or `brew install asciinema`
+- **Q CLI** - with mempalace MCP server configured
+- **SSH access** - to your mempalace server
+- **Python 3** - for parsing (usually pre-installed)
+- **jq** - `sudo apt install jq` or `brew install jq`
 
 ## Features
 
@@ -89,33 +93,65 @@ Direct Storage (SSH → mempalace MCP server)
 ✅ Fast SSH connection reuse  
 ✅ Duplicate detection  
 ✅ Searchable by Q across sessions  
-✅ Robust error handling
+✅ Robust error handling with fallback  
+✅ Local persistence for failed uploads
 
-## Stats
+## Scripts
 
-- **54 sessions** recorded and stored
-- **59+ facts** in knowledge graph
-- **100% reliability** after April 24 fixes
-- **Top tech**: mempalace, SSH, bash, EKS, Kubernetes
+- `q-observed` - Main wrapper (use instead of `q chat`)
+- `search-sessions` - Search all stored sessions
+- `latest-sessions` - Show 5 most recent sessions
+- `stats.sh` - Analytics dashboard
+- `install.sh` - One-command setup
+- `setup-backup-cron.sh` - Enable daily backups
+- `migrate-mempalace.sh` - Server migration helper
 
-## Installation (New Machine)
+## Configuration
 
+Edit `config.env`:
 ```bash
-./install.sh
+MEMPALACE_SERVER=your.server.ip
+USERNAME=your_username
 ```
 
-This will:
-- Check dependencies
-- Configure server/username
-- Test SSH connection
-- Create shell alias
-- Make all scripts executable
-
-## Optional: Enable Daily Backups
+## Optional: Daily Backups
 
 ```bash
 ./setup-backup-cron.sh
 ```
+
+## How it works
+
+1. **Recording**: asciinema captures terminal session
+2. **Parsing**: Python removes UI noise, extracts user interactions
+3. **Analysis**: Q CLI analyzes session, returns structured JSON
+4. **Validation**: jq validates JSON (fallback if invalid)
+5. **Storage**: SSH to mempalace server, store in ChromaDB
+6. **Knowledge Graph**: Extract facts (worked_on, completed_task)
+7. **Local Backup**: Save to `./failed-sessions/` for reliability
+
+## Troubleshooting
+
+**Session not stored?**
+- Check `./failed-sessions/` for local backup
+- Verify SSH connection: `ssh root@YOUR_SERVER`
+- Check mempalace server is running
+
+**Q analysis fails?**
+- Fallback mode activates automatically
+- Raw session text stored with `fallback` tag
+- Check `./failed-sessions/` for JSON
+
+**Permission denied?**
+- Run: `chmod +x q-observed install.sh`
+
+## License
+
+MIT License - see [LICENSE](LICENSE)
+
+## Contributing
+
+PRs welcome! This is a personal productivity tool that might help others.
 
 ## Status
 
