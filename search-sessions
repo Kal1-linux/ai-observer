@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# Quick search for ai-observer sessions
+
+QUERY="${1:-today}"
+
+ssh root@192.168.1.137 "cd /root/mempalace && source venv/bin/activate && python - <<PY
+from mempalace.mcp_server import _get_collection
+import json
+from datetime import datetime
+
+col = _get_collection()
+results = col.get(where={'wing': 'ai-observer'}, limit=20)
+
+print('📋 AI Observer Sessions:\n')
+for i, doc in enumerate(results['documents'], 1):
+    data = json.loads(doc)
+    print(f'{i}. {data[\"timestamp\"]}')
+    print(f'   {data[\"summary\"]}')
+    if data['tasks']:
+        print(f'   Tasks: {', '.join(data['tasks'])}')
+    print()
+PY
+" 2>/dev/null

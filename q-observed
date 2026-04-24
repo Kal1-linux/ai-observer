@@ -1,0 +1,189 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+CAST_FILE="session-$(date +%Y%m%d-%H%M%S).cast"
+
+echo "🎬 Starting AI Observer..."
+echo "📹 Recording to: $CAST_FILE"
+echo ""
+
+asciinema rec "$CAST_FILE" -c "q chat"
+
+echo ""
+echo "✅ Session recorded to $CAST_FILE"
+echo ""
+echo "🧠 Parsing session locally..."
+
+# Parse and clean session
+SESSION_TEXT=$(python3 - "$CAST_FILE" <<'PY'
+from pathlib import Path
+import json, re, sys
+
+file = Path(sys.argv[1])
+ANSI = re.compile(r'\x1B[@-_][0-?]*[ -/]*[@-~]')
+
+output = []
+with file.open() as f:
+    for i, line in enumerate(f):
+        if i == 0: continue
+        try:
+            event = json.loads(line)
+            if len(event) >= 3 and event[1] == "o":
+                output.append(event[2])
+        except: pass
+
+text = ANSI.sub('', "".join(output))
+filtered = []
+capture = False
+
+for line in text.splitlines():
+    line = line.strip()
+    if line.startswith(">"): capture = True
+    if not capture: continue
+    if any(x in line.lower() for x in ["did you know", "mcp server", "loading", "ctrl +", 
+        "help all commands", "commands:", "usage:", "using tool:", "allow this action", 
+        "running", "with the param", "completed in", "purpose:", "you are chatting with",
+        "thinking...", "━━━", "╭─", "│", "╰─"]): continue
+    if line: filtered.append(line)
+
+print("\n".join(filtered))
+PY
+)
+
+if [ ${#SESSION_TEXT} -lt 50 ]; then
+    echo "⚠️ Session too small, skipping"
+    exit 0
+fi
+
+echo "🧠 Analyzing session..."
+echo "📊 Captured: $(echo "$SESSION_TEXT" | wc -w) words"
+
+# Get JSON from Q
+RESULT=$(printf "%s" "Analyze this DevOps terminal session and return ONLY valid JSON (no other text):
+
+SESSION:
+----------------
+$SESSION_TEXT
+----------------
+
+{
+  \"project\": \"ai-observer\",
+  \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
+  \"summary\": \"\",
+  \"tasks\": [],
+  \"decisions\": [],
+  \"commands\": [],
+  \"problems\": [],
+  \"learnings\": [],
+  \"files_created\": [],
+  \"files_modified\": [],
+  \"technologies\": [],
+  \"tags\": []
+}
+
+Rules:
+- Extract clearly and concisely
+- Include ALL filenames in tags
+- Detect technologies (docker, aws, kubernetes, bash, python, etc.)
+- tags = searchable keywords (lowercase, no spaces)" | q chat --no-interactive 2>&1)
+
+# Extract JSON
+JSON=$(echo "$RESULT" | python3 -c "
+import sys, json, re
+text = re.sub(r'\x1B[@-_][0-?]*[ -/]*[@-~]', '', sys.stdin.read())
+depth = start = 0
+for i, c in enumerate(text):
+    if c == '{':
+        if depth == 0: start = i
+        depth += 1
+    elif c == '}':
+        depth -= 1
+        if depth == 0:
+            try:
+                obj = json.loads(text[start:i+1])
+                if 'project' in obj and 'timestamp' in obj:
+                    print(json.dumps(obj, separators=(',', ':')))
+                    break
+            except: pass
+" 2>/dev/null)
+
+if [ -z "$JSON" ]; then
+    echo "⚠️ No valid JSON returned, skipping storage"
+    exit 0
+fi
+
+echo "📊 Session analyzed"
+
+# Store via SSH
+TEMP_JSON="/tmp/ai-observer-$$.json"
+echo "$JSON" > "$TEMP_JSON"
+
+if [ ! -s "$TEMP_JSON" ]; then
+    echo "❌ Failed to write JSON"
+    rm -f "$TEMP_JSON"
+    exit 1
+fi
+
+STORAGE_RESULT=$(cat "$TEMP_JSON" | ssh -o ControlMaster=auto \
+    -o ControlPath=/tmp/ssh-mempalace-%r@%h:%p \
+    -o ControlPersist=yes \
+    root@192.168.1.137 "cd /root/mempalace && source venv/bin/activate && python - 2>&1 <<'PY'
+from mempalace.mcp_server import tool_add_drawer, tool_kg_add
+import json, sys
+
+try:
+    data = sys.stdin.read()
+    if not data.strip():
+        print('FAILED: Empty input')
+        sys.exit(1)
+    parsed = json.loads(data)
+    
+    result = tool_add_drawer(
+        wing='ai-observer',
+        room='sessions',
+        content=data,
+        source_file='$CAST_FILE',
+        added_by='ai-observer'
+    )
+    
+    if result.get('success'):
+        tool_kg_add(
+            subject='prathammodi',
+            predicate='worked_on',
+            object=parsed['summary'][:100],
+            valid_from=parsed['timestamp'].split('T')[0]
+        )
+        
+        for task in parsed['tasks'][:3]:
+            tool_kg_add(
+                subject='prathammodi',
+                predicate='completed_task',
+                object=task,
+                valid_from=parsed['timestamp'].split('T')[0]
+            )
+        
+        print('SUCCESS')
+    else:
+        print(f\"FAILED: {result}\")
+except Exception as e:
+    print(f'FAILED: {e}')
+    sys.exit(1)
+PY
+")
+
+rm -f "$TEMP_JSON"
+
+if echo "$STORAGE_RESULT" | grep -q "SUCCESS"; then
+    echo "✅ Stored in mempalace: ai-observer/sessions"
+    echo "🔍 Search with: \"What did I work on today?\""
+else
+    echo "❌ Storage failed"
+    echo "$STORAGE_RESULT"
+    echo ""
+    echo "💾 Creating emergency backup..."
+    ./backup/backup-cast.sh "$CAST_FILE" || echo "⚠️ Backup also failed - .cast file saved locally"
+fi
+
+echo ""
+echo "📁 Session: $CAST_FILE"
+echo "🎬 Replay: asciinema play $CAST_FILE"
