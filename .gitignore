@@ -1,6 +1,17 @@
+# Session recordings (large files)
 *.cast
-test-*
-debug-*
-*.pyc
+
+# Local backups
+failed-sessions/
+backup/
+
+# Config with server IP
+config.env
+
+# Backup files
+*.backup
+*.pre-*
+
+# Python cache
 __pycache__/
-.DS_Store
+*.pyc
