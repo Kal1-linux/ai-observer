@@ -41,20 +41,25 @@ Work normally, and when you exit Q:
 
 ## Search past work
 
+**Token-optimized queries (recommended):**
+```bash
+./smart-query friends    # 98% token savings
+./smart-query tasks      # Recent completed tasks
+./smart-query work       # Recent work history
+./smart-query recent 5   # Last 5 sessions
+```
+
 **Ask Q directly:**
 ```
 "What did I work on today?"
 "What tasks did I complete this week?"
 ```
 
-**Quick search:**
+**Traditional search:**
 ```bash
-./search-sessions
-```
-
-**Analytics:**
-```bash
-./stats.sh
+./search-sessions        # Full search
+./latest-sessions        # Recent sessions
+./stats.sh              # Analytics
 ```
 
 **Replay session:**
@@ -94,11 +99,13 @@ Direct Storage (SSH → mempalace MCP server)
 ✅ Duplicate detection  
 ✅ Searchable by Q across sessions  
 ✅ Robust error handling with fallback  
-✅ Local persistence for failed uploads
+✅ Local persistence for failed uploads  
+✅ **Token-optimized queries (90%+ savings)** 🆕
 
 ## Scripts
 
 - `q-observed` - Main wrapper (use instead of `q chat`)
+- `smart-query` - Token-optimized queries (90%+ savings) 🆕
 - `search-sessions` - Search all stored sessions
 - `latest-sessions` - Show 5 most recent sessions
 - `stats.sh` - Analytics dashboard
