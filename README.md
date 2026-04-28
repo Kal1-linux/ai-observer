@@ -41,12 +41,18 @@ Work normally, and when you exit Q:
 
 ## Search past work
 
-**Token-optimized queries (recommended):**
+**Token-optimized queries via Q (recommended):**
 ```bash
-./smart-query friends    # 98% token savings
-./smart-query tasks      # Recent completed tasks
-./smart-query work       # Recent work history
-./smart-query recent 5   # Last 5 sessions
+./q-smart friends    # Q answers using MCP (98% token savings)
+./q-smart tasks      # Q answers using MCP (97% token savings)
+./q-smart work       # Q answers using MCP (95% token savings)
+./q-smart recent 5   # Q answers using MCP (90% token savings)
+```
+
+**Direct SSH queries (faster, no Q):**
+```bash
+./smart-query friends    # Raw data, 98% token savings
+./smart-query tasks      # Raw data, 97% token savings
 ```
 
 **Ask Q directly:**
@@ -105,7 +111,8 @@ Direct Storage (SSH → mempalace MCP server)
 ## Scripts
 
 - `q-observed` - Main wrapper (use instead of `q chat`)
-- `smart-query` - Token-optimized queries (90%+ savings) 🆕
+- `q-smart` - Q-powered token-optimized queries (MCP) 🆕
+- `smart-query` - Direct SSH token-optimized queries 🆕
 - `search-sessions` - Search all stored sessions
 - `latest-sessions` - Show 5 most recent sessions
 - `stats.sh` - Analytics dashboard
