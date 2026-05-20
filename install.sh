@@ -10,8 +10,8 @@ command -v python3 >/dev/null || { echo "❌ python3 not found"; exit 1; }
 command -v q >/dev/null || { echo "❌ Q CLI not found"; exit 1; }
 
 # Get config
-read -p "Mempalace server IP [192.168.1.137]: " SERVER
-SERVER=${SERVER:-192.168.1.137}
+read -p "Mempalace server IP [${MEMPALACE_SERVER}]: " SERVER
+SERVER=${SERVER:-${MEMPALACE_SERVER}}
 read -p "Your username [$(whoami)]: " USERNAME
 USERNAME=${USERNAME:-$(whoami)}
 

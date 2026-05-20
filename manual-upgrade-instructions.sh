@@ -5,7 +5,7 @@ echo "📝 Creating patch file..."
 
 cat > /tmp/mempalace_patch.txt << 'EOF'
 INSTRUCTIONS:
-1. SSH to mempalace server: ssh root@192.168.1.137
+1. SSH to mempalace server: ssh root@${MEMPALACE_SERVER}
 2. cd /root/mempalace
 3. Backup: cp mempalace/mcp_server.py mempalace/mcp_server.py.backup_manual
 4. Edit: nano mempalace/mcp_server.py

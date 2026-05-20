@@ -3,7 +3,7 @@
 
 QUERY="${1:-today}"
 
-ssh root@192.168.1.137 "cd /root/mempalace && source venv/bin/activate && python - <<PY
+ssh root@${MEMPALACE_SERVER} "cd /root/mempalace && source venv/bin/activate && python - <<PY
 from mempalace.mcp_server import _get_collection
 import json
 from datetime import datetime

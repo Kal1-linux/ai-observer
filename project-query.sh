@@ -4,7 +4,7 @@
 # Example: PROJECT=my-service ./project-query.sh tool_kg_query "entity='prathammodi', direction='both'"
 
 # Load configuration (MEMPALACE_SERVER)
-source "$(dirname "$0")/config.env" 2>/dev/null || { MEMPALACE_SERVER=192.168.1.137; }
+source "$(dirname "$0")/config.env" 2>/dev/null || { MEMPALACE_SERVER=${MEMPALACE_SERVER}; }
 export MEMPALACE_SERVER
 
 # Default project name if not supplied

@@ -1,7 +1,7 @@
 #!/bin/bash
 # Add server-side filtered query tool to mempalace MCP
 
-source "$(dirname "$0")/config.env" 2>/dev/null || { MEMPALACE_SERVER=192.168.1.137; }
+source "$(dirname "$0")/config.env" 2>/dev/null || { MEMPALACE_SERVER=${MEMPALACE_SERVER}; }
 export MEMPALACE_SERVER
 
 ssh root@$MEMPALACE_SERVER bash << 'SSHEOF'

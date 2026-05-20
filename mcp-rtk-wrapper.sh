@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-source "$(dirname "$0")/config.env" 2>/dev/null || { MEMPALACE_SERVER=192.168.1.137; }
+source "$(dirname "$0")/config.env" 2>/dev/null || { MEMPALACE_SERVER=${MEMPALACE_SERVER}; }
 export MEMPALACE_SERVER
 # RTK wrapper for mempalace MCP queries
 # Compresses output before sending to Q

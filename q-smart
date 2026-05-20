@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Load config and set PATH for q
-source "$(dirname "$0")/config.env" 2>/dev/null || { MEMPALACE_SERVER=192.168.1.137; USERNAME=$(whoami); }
+source "$(dirname "$0")/config.env" 2>/dev/null || { MEMPALACE_SERVER=${MEMPALACE_SERVER}; USERNAME=$(whoami); }
 export MEMPALACE_SERVER USERNAME
 export PATH="$HOME/bin:$PATH"
 # Q-compatible smart queries using mempalace MCP

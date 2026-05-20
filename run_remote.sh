@@ -4,7 +4,7 @@
 # Or: bash run_remote.sh "command"
 
 source "$(dirname "$0")/config.env" 2>/dev/null || {
-    MEMPALACE_SERVER=192.168.1.137
+    MEMPALACE_SERVER=${MEMPALACE_SERVER}
     USERNAME=$(whoami)
 }
 export MEMPALACE_SERVER USERNAME

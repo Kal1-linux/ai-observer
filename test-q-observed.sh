@@ -18,7 +18,7 @@ echo ""
 
 # Test 2: SSH connection
 echo "2. Testing SSH to mempalace server..."
-if ssh -o ConnectTimeout=5 root@192.168.1.137 "echo 'Connected'" &> /dev/null; then
+if ssh -o ConnectTimeout=5 root@${MEMPALACE_SERVER} "echo 'Connected'" &> /dev/null; then
     echo "  ✅ SSH connection OK"
 else
     echo "  ❌ SSH connection FAILED"
@@ -28,7 +28,7 @@ echo ""
 
 # Test 3: Mempalace server
 echo "3. Testing mempalace server..."
-if ssh root@192.168.1.137 "cd /root/mempalace && test -f venv/bin/activate" &> /dev/null; then
+if ssh root@${MEMPALACE_SERVER} "cd /root/mempalace && test -f venv/bin/activate" &> /dev/null; then
     echo "  ✅ Mempalace server OK"
 else
     echo "  ❌ Mempalace server FAILED"

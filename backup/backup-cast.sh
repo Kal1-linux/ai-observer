@@ -11,7 +11,7 @@ fi
 echo "📦 Backing up $CAST_FILE to mempalace..."
 
 # FIX 2: GUARANTEED BACKUP - never fail on duplicate
-RESULT=$(cat "$CAST_FILE" | ssh root@192.168.1.137 "cd /root/mempalace && source venv/bin/activate && python - <<'PY'
+RESULT=$(cat "$CAST_FILE" | ssh root@${MEMPALACE_SERVER} "cd /root/mempalace && source venv/bin/activate && python - <<'PY'
 from mempalace.mcp_server import tool_add_drawer
 import sys, time
 

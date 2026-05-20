@@ -7,12 +7,12 @@ set -euo pipefail
 # Migrates mempalace data from one server to another
 # Usage: ./migrate-mempalace.sh <source-host> <target-host>
 
-SOURCE_HOST="${1:-root@192.168.1.137}"
+SOURCE_HOST="${1:-root@${MEMPALACE_SERVER}}"
 TARGET_HOST="${2:-}"
 
 if [ -z "$TARGET_HOST" ]; then
     echo "Usage: $0 <source-host> <target-host>"
-    echo "Example: $0 root@192.168.1.137 root@192.168.1.200"
+    echo "Example: $0 root@${MEMPALACE_SERVER} root@192.168.1.200"
     exit 1
 fi
 

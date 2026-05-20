@@ -19,7 +19,7 @@ if os.path.isfile(config_path):
                 key, value = line.split('=', 1)
                 os.environ.setdefault(key.strip(), value.strip().strip('"'))
 
-MEMPALACE_SERVER = os.getenv('MEMPALACE_SERVER', '192.168.1.137')
+MEMPALACE_SERVER = os.getenv('MEMPALACE_SERVER', '${MEMPALACE_SERVER}')
 
 def query_kg_filtered(entity, predicate_filter=None, limit=10):
     """Query KG and filter by predicate type"""
