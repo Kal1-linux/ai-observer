@@ -11,17 +11,6 @@ Automatic session recording and memory extraction for Q CLI.
 
 ## Quick Start
 
-**Option 1: Docker (Recommended)**
-```bash
-git clone https://github.com/kal1-linux/ai-observer.git
-cd ai-observer
-docker-compose up -d
-docker exec -it ai-observer bash
-./q-observed  # or ./claude-observed
-```
-See [DOCKER.md](DOCKER.md) for details.
-
-**Option 2: Manual Install**
 ```bash
 # 1. Clone and setup
 git clone https://github.com/kal1-linux/ai-observer.git
@@ -91,20 +80,6 @@ Work normally, and when you exit:
 **Replay session:**
 ```bash
 asciinema play session-20260424-063356.cast
-```
-
-## Architecture
-
-```
-Session Recording (asciinema)
-    ↓
-Local Parsing (Python - removes UI noise)
-    ↓
-AI Analysis (Q CLI - extracts structured JSON)
-    ↓
-Direct Storage (SSH → mempalace MCP server)
-    ├─ Drawer: ai-observer/sessions (full JSON)
-    └─ Knowledge Graph: facts about your work
 ```
 
 ## Requirements
