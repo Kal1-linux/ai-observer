@@ -12,21 +12,25 @@ Automatic session recording and memory extraction for Q CLI.
 ## Quick Start
 
 ```bash
-# 1. Clone and setup
+# 1. Clone repo
 git clone https://github.com/kal1-linux/ai-observer.git
 cd ai-observer
-./install.sh
 
-# 2. Configure
-cp config.env.example config.env
-# Edit config.env with your mempalace server IP and username
+# 2. Run complete setup (validates everything)
+./setup.sh
 
-# 3. Use instead of `q chat`
-./q-observed
-
-# Or for Claude Code
-./claude-observed
+# 3. Start using
+./q-observed      # Q CLI with recording
+./claude-observed # Claude Code with recording
 ```
+
+**What setup.sh does:**
+- ✅ Checks Q CLI and Claude Code installed
+- ✅ Validates all dependencies (python3, jq, asciinema, ssh)
+- ✅ Configures mempalace connection
+- ✅ Tests SSH and mempalace server
+- ✅ Creates required directories
+- ✅ Makes scripts executable
 
 ## Usage
 
