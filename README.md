@@ -13,7 +13,7 @@ Automatic session recording and memory extraction for Q CLI.
 
 ```bash
 # 1. Clone and setup
-git clone https://github.com/yourusername/ai-observer.git
+git clone https://github.com/kal1-linux/ai-observer.git
 cd ai-observer
 ./install.sh
 
