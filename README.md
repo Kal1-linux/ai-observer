@@ -106,7 +106,8 @@ Direct Storage (SSH → mempalace MCP server)
 ✅ Searchable by Q across sessions  
 ✅ Robust error handling with fallback  
 ✅ Local persistence for failed uploads  
-✅ **Token-optimized queries (90%+ savings)** 🆕
+✅ **Token-optimized queries (90%+ savings)** 🆕  
+✅ **RTK integration (80% token savings during sessions)** 🆕
 
 ## Scripts
 

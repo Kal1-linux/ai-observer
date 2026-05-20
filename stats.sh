@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+source "$(dirname "$0")/config.env" 2>/dev/null || { MEMPALACE_SERVER=192.168.1.137; }
+export MEMPALACE_SERVER
 # AI Observer - Session analytics
 source config.env 2>/dev/null || { MEMPALACE_SERVER=192.168.1.137; USERNAME=prathammodi; }
 
