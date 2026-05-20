@@ -2,7 +2,7 @@
 # Load configuration and set up logging
 source "$(dirname "$0")/config.env" 2>/dev/null || { MEMPALACE_SERVER=${MEMPALACE_SERVER:-}; USERNAME=$(whoami); }
 export MEMPALACE_SERVER USERNAME
-PROJECT="${PROJECT:-ai-observer}"
+PROJECT="${PROJECT:-claude-sessions}"
 
 # Logging
 LOG_DIR="$HOME/.ai-observer/logs"
@@ -15,11 +15,12 @@ CAST_DIR="$HOME/.ai-observer/casts"
 mkdir -p "$CAST_DIR"
 CAST_FILE="$CAST_DIR/session-$(date +%Y%m%d-%H%M%S).cast"
 
-echo "🎬 Starting AI Observer..."
+echo "🎬 Starting Claude Observer..."
 echo "📹 Recording to: $CAST_FILE"
 echo ""
 
-asciinema rec "$CAST_FILE" -c "q chat"
+#asciinema rec "$CAST_FILE" -c "q chat"
+asciinema rec "$CAST_FILE" -c "claude"
 
 echo ""
 echo "✅ Session recorded to $CAST_FILE"
@@ -50,7 +51,7 @@ capture = False
 
 for line in text.splitlines():
     line = line.strip()
-    if line.startswith(">"): capture = True
+    if line.startswith(">") or "❯" in line: capture = True
     if not capture: continue
     if any(x in line.lower() for x in ["did you know", "mcp server", "loading", "ctrl +", 
         "help all commands", "commands:", "usage:", "using tool:", "allow this action", 
@@ -211,7 +212,7 @@ SSHEOF
 set -e  # Re-enable exit on error
 
 if echo "$STORAGE_RESULT" | grep -q "SUCCESS"; then
-    echo "✅ Stored in mempalace: ai-observer/sessions"
+    echo "✅ Stored in mempalace: $PROJECT/sessions"
     echo "🔍 Search with: \"What did I work on today?\""
 else
     echo "❌ Storage failed"

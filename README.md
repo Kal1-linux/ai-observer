@@ -23,21 +23,30 @@ cp config.env.example config.env
 
 # 3. Use instead of `q chat`
 ./q-observed
+
+# Or for Claude Code
+./claude-observed
 ```
 
 ## Usage
 
-Instead of running `q chat`, run:
-
+**For Q CLI:**
 ```bash
 ./q-observed
 ```
 
-Work normally, and when you exit Q:
+**For Claude Code:**
+```bash
+./claude-observed
+```
+
+Work normally, and when you exit:
 - Session saved as `session-YYYYMMDD-HHMMSS.cast`
 - Key information automatically extracted and stored
 - Facts added to knowledge graph
-- Next time, Q recalls what you worked on
+- Next time, the AI recalls what you worked on
+
+**Note:** Q sessions stored in `ai-observer` wing, Claude sessions in `claude-sessions` wing
 
 ## Search past work
 
@@ -90,7 +99,7 @@ Direct Storage (SSH → mempalace MCP server)
 ## Requirements
 
 - **asciinema** - `sudo apt install asciinema` or `brew install asciinema`
-- **Q CLI** - with mempalace MCP server configured
+- **Q CLI or Claude Code** - with mempalace MCP server configured
 - **SSH access** - to your mempalace server
 - **Python 3** - for parsing (usually pre-installed)
 - **jq** - `sudo apt install jq` or `brew install jq`
