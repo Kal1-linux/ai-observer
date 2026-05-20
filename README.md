@@ -11,6 +11,17 @@ Automatic session recording and memory extraction for Q CLI.
 
 ## Quick Start
 
+**Option 1: Docker (Recommended)**
+```bash
+git clone https://github.com/kal1-linux/ai-observer.git
+cd ai-observer
+docker-compose up -d
+docker exec -it ai-observer bash
+./q-observed  # or ./claude-observed
+```
+See [DOCKER.md](DOCKER.md) for details.
+
+**Option 2: Manual Install**
 ```bash
 # 1. Clone and setup
 git clone https://github.com/kal1-linux/ai-observer.git

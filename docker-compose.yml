@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  ai-observer:
+    build: .
+    container_name: ai-observer
+    hostname: ai-observer
+    ports:
+      - "8080:8080"  # Mempalace MCP
+      - "2222:22"    # SSH (optional)
+    volumes:
+      - ./sessions:/home/aiuser/.ai-observer/casts
+      - ./mempalace-data:/home/aiuser/mempalace/data
+    environment:
+      - MEMPALACE_SERVER=localhost
+      - USERNAME=aiuser
+    stdin_open: true
+    tty: true
+    restart: unless-stopped
+
+volumes:
+  sessions:
+  mempalace-data:
