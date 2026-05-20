@@ -14,7 +14,10 @@ RUN apt-get update && apt-get install -y \
     jq \
     asciinema \
     openssh-server \
+    openssh-client \
     sudo \
+    nodejs \
+    npm \
     && rm -rf /var/lib/apt/lists/*
 
 # Create user
@@ -24,8 +27,14 @@ RUN useradd -m -s /bin/bash aiuser && \
 USER aiuser
 WORKDIR /home/aiuser
 
-# Install mempalace (requires local copy or SSH to existing server)
-# For now, we'll configure to use remote mempalace server
+# Install Q CLI
+RUN curl -fsSL https://d3vv6lp55qjaqc.cloudfront.net/items/1n3N1Y0W0k2u0W3u0W3u/install.sh | bash || \
+    (mkdir -p ~/.local/bin && echo "Q CLI install attempted")
+
+# Install Claude Code (if available)
+RUN npm install -g @anthropic-ai/claude-code 2>/dev/null || echo "Claude Code not available via npm"
+
+# Install mempalace placeholder
 RUN mkdir -p mempalace
 
 # Install ai-observer
@@ -39,15 +48,18 @@ RUN mkdir -p /home/aiuser/.config/amazonq
 # Setup Claude config directory
 RUN mkdir -p /home/aiuser/.claude
 
-# Copy MCP configs (will be created by entrypoint)
+# Copy configs and entrypoint
 COPY --chown=aiuser:aiuser docker-entrypoint.sh /home/aiuser/
-RUN chmod +x /home/aiuser/docker-entrypoint.sh
+COPY --chown=aiuser:aiuser .docker-configs /home/aiuser/.docker-configs
 
-# Expose SSH port for mempalace access
+RUN chmod +x /home/aiuser/docker-entrypoint.sh && \
+    cp -r /home/aiuser/.docker-configs/.config/amazonq/* /home/aiuser/.config/amazonq/ 2>/dev/null || true && \
+    cp -r /home/aiuser/.docker-configs/.claude/* /home/aiuser/.claude/ 2>/dev/null || true && \
+    cp -r /home/aiuser/.docker-configs/.ssh/* /home/aiuser/.ssh/ 2>/dev/null || true && \
+    chmod 600 /home/aiuser/.ssh/id_* 2>/dev/null || true
+
+# Expose ports
 EXPOSE 22
-
-# Expose mempalace MCP port
-EXPOSE 8080
 
 ENTRYPOINT ["/home/aiuser/docker-entrypoint.sh"]
 CMD ["bash"]
