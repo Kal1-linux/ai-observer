@@ -5,19 +5,16 @@ services:
     build: .
     container_name: ai-observer
     hostname: ai-observer
-    ports:
-      - "8080:8080"  # Mempalace MCP
-      - "2222:22"    # SSH (optional)
     volumes:
       - ./sessions:/home/aiuser/.ai-observer/casts
-      - ./mempalace-data:/home/aiuser/mempalace/data
+      - ~/.ssh:/home/aiuser/.ssh:ro  # Mount SSH keys for mempalace access
     environment:
-      - MEMPALACE_SERVER=localhost
+      - MEMPALACE_SERVER=${MEMPALACE_SERVER:-192.168.1.137}
       - USERNAME=aiuser
     stdin_open: true
     tty: true
     restart: unless-stopped
+    network_mode: host  # Allow SSH to external server
 
 volumes:
   sessions:
-  mempalace-data:

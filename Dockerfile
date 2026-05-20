@@ -24,12 +24,9 @@ RUN useradd -m -s /bin/bash aiuser && \
 USER aiuser
 WORKDIR /home/aiuser
 
-# Install mempalace
-RUN git clone https://github.com/allenporter/mempalace.git && \
-    cd mempalace && \
-    python3 -m venv venv && \
-    . venv/bin/activate && \
-    pip install -e .
+# Install mempalace (requires local copy or SSH to existing server)
+# For now, we'll configure to use remote mempalace server
+RUN mkdir -p mempalace
 
 # Install ai-observer
 RUN git clone https://github.com/kal1-linux/ai-observer.git && \
