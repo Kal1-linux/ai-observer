@@ -73,9 +73,20 @@ mkdir -p ~/.ai-observer/{casts,logs}
 mkdir -p ./failed-sessions
 
 # 8. Make scripts executable
-chmod +x q-observed claude-observed search-sessions latest-sessions stats.sh
+chmod +x q-observed claude-observed search-sessions latest-sessions stats.sh rtk-toggle.sh
 
-# 9. Add to PATH (optional)
+# 9. Configure RTK (disable for speed)
+if ! grep -q "AMAZONQ_RTK_ENABLED" ~/.bashrc 2>/dev/null; then
+    echo ""
+    read -p "Disable RTK for faster Q startup? (recommended) (y/n) " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        echo "export AMAZONQ_RTK_ENABLED=false" >> ~/.bashrc
+        echo "✅ RTK disabled (use ./rtk-toggle.sh to change)"
+    fi
+fi
+
+# 10. Add to PATH (optional)
 if ! grep -q "ai-observer" ~/.bashrc; then
     echo ""
     read -p "Add ai-observer to PATH? (y/n) " -n 1 -r
@@ -93,5 +104,6 @@ echo "Usage:"
 echo "  ./q-observed       # Start Q with recording"
 echo "  ./claude-observed  # Start Claude with recording"
 echo "  ./search-sessions  # Search past work"
+echo "  ./rtk-toggle.sh    # Toggle RTK mode"
 echo ""
 echo "Test it: ./q-observed"

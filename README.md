@@ -106,7 +106,7 @@ asciinema play session-20260424-063356.cast
 ✅ Robust error handling with fallback  
 ✅ Local persistence for failed uploads  
 ✅ **Token-optimized queries (90%+ savings)** 🆕  
-✅ **RTK integration (80% token savings during sessions)** 🆕
+✅ **RTK toggle (speed vs context control)** 🆕
 
 ## Scripts
 
@@ -127,6 +127,25 @@ Edit `config.env`:
 MEMPALACE_SERVER=your.server.ip
 USERNAME=your_username
 ```
+
+### RTK Mode (Speed vs Context)
+
+**RTK (Runtime Token Knowledge)** scans your filesystem for context but slows Q startup.
+
+```bash
+# Disable RTK for faster Q (recommended)
+./rtk-toggle.sh off
+source ~/.bashrc
+
+# Enable RTK for more context
+./rtk-toggle.sh on
+source ~/.bashrc
+
+# Check status
+./rtk-toggle.sh status
+```
+
+**Recommendation:** Keep RTK **off** for daily use. Q will still have full mempalace access.
 
 ## Optional: Daily Backups
 
