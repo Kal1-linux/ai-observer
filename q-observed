@@ -133,24 +133,25 @@ fi
 if [ -z "$JSON" ]; then
     echo "⚠️ Invalid JSON from Q → using fallback"
     
-    JSON=$(jq -nc \
-        --arg text "$SESSION_TEXT" \
-        --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-        '{
-            project: "ai-observer",
-            timestamp: $ts,
-            summary: "fallback: raw session stored",
-            tasks: [],
-            decisions: [],
-            commands: [],
-            problems: ["Q returned invalid JSON"],
-            learnings: [],
-            files_created: [],
-            files_modified: [],
-            technologies: [],
-            tags: ["fallback"],
-            raw_text: $text
-        }')
+    JSON=$(python3 -c '
+import sys, json, datetime
+text = sys.stdin.read()
+print(json.dumps({
+    "project": "ai-observer",
+    "timestamp": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+    "summary": "fallback: raw session stored",
+    "tasks": [],
+    "decisions": [],
+    "commands": [],
+    "problems": ["Q returned invalid JSON"],
+    "learnings": [],
+    "files_created": [],
+    "files_modified": [],
+    "technologies": [],
+    "tags": ["fallback"],
+    "raw_text": text
+}, separators=(",", ":")))
+' <<< "$SESSION_TEXT")
     
     echo "📊 Using fallback storage"
 fi
@@ -165,11 +166,16 @@ STORAGE_RESULT=$(ssh -o ControlMaster=auto \
     -o ControlPath=/tmp/ssh-mempalace-%r@%h:%p \
     -o ControlPersist=yes \
     root@$MEMPALACE_SERVER bash <<SSHEOF 2>&1
-cd /root/mempalace && source venv/bin/activate && python3 <<'PYEOF'
+TMP_JSON=\$(mktemp)
+cat > "\$TMP_JSON" <<'JSONEOF'
+$JSON
+JSONEOF
+cd /root/mempalace && source venv/bin/activate && python3 - "\$TMP_JSON" <<'PYEOF'
 from mempalace.mcp_server import tool_add_drawer, tool_kg_add
-import json, time
+import json, time, sys
 
-data = r'''$JSON'''
+with open(sys.argv[1], 'r') as f:
+    data = f.read()
 parsed = json.loads(data)
 
 # GUARANTEED STORAGE: add unique suffix if duplicate
@@ -206,6 +212,7 @@ try:
 except Exception as e:
     print(f'FAILED: {e}')
 PYEOF
+rm -f "\$TMP_JSON"
 SSHEOF
 )
 set -e  # Re-enable exit on error
