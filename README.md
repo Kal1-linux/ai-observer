@@ -62,6 +62,14 @@ Work normally, and when you exit:
 ./q-smart recent 5   # Q answers using MCP (90% token savings)
 ```
 
+**Token-optimized queries via Claude (recommended):**
+```bash
+./claude-smart friends    # Claude answers using MCP (98% token savings)
+./claude-smart tasks      # Claude answers using MCP (97% token savings)
+./claude-smart work       # Claude answers using MCP (95% token savings)
+./claude-smart recent 5   # Claude answers using MCP (90% token savings)
+```
+
 **Direct SSH queries (faster, no Q):**
 ```bash
 ./smart-query friends    # Raw data, 98% token savings
@@ -111,7 +119,10 @@ asciinema play session-20260424-063356.cast
 ## Scripts
 
 - `q-observed` - Main wrapper (use instead of `q chat`)
+- `claude-observed` - Claude Code session wrapper 🆕
 - `q-smart` - Q-powered token-optimized queries (MCP) 🆕
+- `claude-smart` - Claude-powered token-optimized queries (MCP) 🆕
+- `claude-toggle.sh` - Toggle Claude Code reasoning effort 🆕
 - `smart-query` - Direct SSH token-optimized queries 🆕
 - `search-sessions` - Search all stored sessions
 - `latest-sessions` - Show 5 most recent sessions
@@ -146,6 +157,23 @@ source ~/.bashrc
 ```
 
 **Recommendation:** Keep RTK **off** for daily use. Q will still have full mempalace access.
+
+### Claude Reasoning Mode (Speed vs Cost)
+
+Toggle Claude Code reasoning effort level (deep thinking) to speed up responses and save tokens:
+
+```bash
+# Disable reasoning for fast responses (recommended)
+./claude-toggle.sh off
+source ~/.bashrc
+
+# Enable reasoning for complex tasks
+./claude-toggle.sh on
+source ~/.bashrc
+
+# Check status
+./claude-toggle.sh status
+```
 
 ## Optional: Daily Backups
 
