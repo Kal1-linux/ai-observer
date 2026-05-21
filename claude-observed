@@ -134,25 +134,23 @@ fi
 if [ -z "$JSON" ]; then
     echo "⚠️ Invalid JSON from Claude → using fallback"
     
-    JSON=$(python3 -c '
-import sys, json, datetime
-text = sys.stdin.read()
-print(json.dumps({
-    "project": "ai-observer",
-    "timestamp": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
-    "summary": "fallback: raw session stored",
-    "tasks": [],
-    "decisions": [],
-    "commands": [],
-    "problems": ["Claude returned invalid JSON"],
-    "learnings": [],
-    "files_created": [],
-    "files_modified": [],
-    "technologies": [],
-    "tags": ["fallback"],
-    "raw_text": text
-}, separators=(",", ":")))
-' <<< "$SESSION_TEXT")
+    JSON=$(printf "%s" "$SESSION_TEXT" | jq -R -s -c \
+        --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+        '{
+            project: "ai-observer",
+            timestamp: $ts,
+            summary: "fallback: raw session stored",
+            tasks: [],
+            decisions: [],
+            commands: [],
+            problems: ["Claude returned invalid JSON"],
+            learnings: [],
+            files_created: [],
+            files_modified: [],
+            technologies: [],
+            tags: ["fallback"],
+            raw_text: .
+        }')
     
     echo "📊 Using fallback storage"
 fi
