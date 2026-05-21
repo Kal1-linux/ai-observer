@@ -10,34 +10,24 @@ QUERY_TYPE="${1:-help}"
 
 case "$QUERY_TYPE" in
   friends)
-    claude -p --dangerously-skip-permissions <<'EOF'
-Query the knowledge graph for entity "prathammodi" with direction "both" and show me all facts where the predicate contains "friend". List the friend names clearly.
-EOF
+    claude -p --dangerously-skip-permissions "Query the knowledge graph for entity \"prathammodi\" with direction \"both\" and show me all facts where the predicate contains \"friend\". List the friend names clearly."
     ;;
     
   tasks)
-    claude -p --dangerously-skip-permissions <<'EOF'
-Query the knowledge graph for entity "prathammodi" and filter results to show ONLY facts where predicate is "completed_task". Limit to 10 most recent. Format as a numbered list.
-EOF
+    claude -p --dangerously-skip-permissions "Query the knowledge graph for entity \"prathammodi\" and filter results to show ONLY facts where predicate is \"completed_task\". Limit to 10 most recent. Format as a numbered list."
     ;;
     
   work)
-    claude -p --dangerously-skip-permissions <<'EOF'
-Query the knowledge graph for entity "prathammodi" and filter results to show ONLY facts where predicate is "worked_on". Limit to 5 most recent. Show date and first 80 chars of description.
-EOF
+    claude -p --dangerously-skip-permissions "Query the knowledge graph for entity \"prathammodi\" and filter results to show ONLY facts where predicate is \"worked_on\". Limit to 5 most recent. Show date and first 80 chars of description."
     ;;
     
   recent)
     LIMIT="${2:-3}"
     WING="${3:-claude-sessions}"
     if [ "$WING" = "all" ]; then
-      claude -p --dangerously-skip-permissions <<EOF
-Search mempalace rooms named "sessions" across wings "ai-observer" and "claude-sessions" with empty query string, limit to $LIMIT results. Retrieve the sessions, sort them by timestamp in descending order (newest first), and for each session show timestamp, wing name, and summary. Keep it concise.
-EOF
+      claude -p --dangerously-skip-permissions "Search mempalace rooms named \"sessions\" across wings \"ai-observer\" and \"claude-sessions\" with empty query string, limit to $LIMIT results. Retrieve the sessions, sort them by timestamp in descending order (newest first), and for each session show timestamp, wing name, and summary. Keep it concise."
     else
-      claude -p --dangerously-skip-permissions <<EOF
-Search mempalace wing "$WING" room "sessions" with empty query string, limit to $LIMIT results. Retrieve the sessions, sort them by timestamp in descending order (newest first), and for each session show timestamp and summary. Keep it concise.
-EOF
+      claude -p --dangerously-skip-permissions "Search mempalace wing \"$WING\" room \"sessions\" with empty query string, limit to $LIMIT results. Retrieve the sessions, sort them by timestamp in descending order (newest first), and for each session show timestamp and summary. Keep it concise."
     fi
     ;;
     

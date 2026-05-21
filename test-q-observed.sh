@@ -1,6 +1,10 @@
 #!/bin/bash
 # Quick test of q-observed workflow (without actual Q chat)
 
+# Load configuration
+source "$(dirname "$0")/config.env" 2>/dev/null || { MEMPALACE_SERVER=${MEMPALACE_SERVER:-}; USERNAME=$(whoami); }
+export MEMPALACE_SERVER USERNAME
+
 echo "🧪 Testing q-observed components..."
 echo ""
 
