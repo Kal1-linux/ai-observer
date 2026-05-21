@@ -1,56 +1,56 @@
 #!/usr/bin/env bash
-# Load config and set PATH for q
-source "$(dirname "$0")/config.env" 2>/dev/null || { MEMPALACE_SERVER=${MEMPALACE_SERVER}; USERNAME=$(whoami); }
+# Load config and set PATH
+source "$(dirname "$0")/config.env" 2>/dev/null || { MEMPALACE_SERVER=${MEMPALACE_SERVER:-}; USERNAME=$(whoami); }
 export MEMPALACE_SERVER USERNAME
-export PATH="$HOME/bin:$PATH"
-# Q-compatible smart queries using mempalace MCP
-# Usage: ./q-smart friends|tasks|work|recent
+
+# Claude-compatible smart queries using mempalace MCP
+# Usage: ./claude-smart friends|tasks|work|recent
 
 QUERY_TYPE="${1:-help}"
 
 case "$QUERY_TYPE" in
   friends)
-    q chat --no-interactive --trust-all-tools <<'EOF'
+    claude -p --dangerously-skip-permissions <<'EOF'
 Query the knowledge graph for entity "prathammodi" with direction "both" and show me all facts where the predicate contains "friend". List the friend names clearly.
 EOF
     ;;
     
   tasks)
-    q chat --no-interactive --trust-all-tools <<'EOF'
+    claude -p --dangerously-skip-permissions <<'EOF'
 Query the knowledge graph for entity "prathammodi" and filter results to show ONLY facts where predicate is "completed_task". Limit to 10 most recent. Format as a numbered list.
 EOF
     ;;
     
   work)
-    q chat --no-interactive --trust-all-tools <<'EOF'
+    claude -p --dangerously-skip-permissions <<'EOF'
 Query the knowledge graph for entity "prathammodi" and filter results to show ONLY facts where predicate is "worked_on". Limit to 5 most recent. Show date and first 80 chars of description.
 EOF
     ;;
     
   recent)
     LIMIT="${2:-3}"
-    WING="${3:-ai-observer}"
+    WING="${3:-claude-sessions}"
     if [ "$WING" = "all" ]; then
-      q chat --no-interactive --trust-all-tools <<EOF
+      claude -p --dangerously-skip-permissions <<EOF
 Search mempalace rooms named "sessions" across wings "ai-observer" and "claude-sessions" with empty query string, limit to $LIMIT results. Retrieve the sessions, sort them by timestamp in descending order (newest first), and for each session show timestamp, wing name, and summary. Keep it concise.
 EOF
     else
-      q chat --no-interactive --trust-all-tools <<EOF
+      claude -p --dangerously-skip-permissions <<EOF
 Search mempalace wing "$WING" room "sessions" with empty query string, limit to $LIMIT results. Retrieve the sessions, sort them by timestamp in descending order (newest first), and for each session show timestamp and summary. Keep it concise.
 EOF
     fi
     ;;
     
   *)
-    echo "Usage: ./q-smart [friends|tasks|work|recent]"
+    echo "Usage: ./claude-smart [friends|tasks|work|recent]"
     echo ""
     echo "Examples:"
-    echo "  ./q-smart friends    # Get friend relationships"
-    echo "  ./q-smart tasks      # Get completed tasks"
-    echo "  ./q-smart work       # Get recent work"
-    echo "  ./q-smart recent 5   # Get last 5 sessions"
+    echo "  ./claude-smart friends    # Get friend relationships"
+    echo "  ./claude-smart tasks      # Get completed tasks"
+    echo "  ./claude-smart work       # Get recent work"
+    echo "  ./claude-smart recent 5   # Get last 5 sessions"
     echo ""
-    echo "Uses Q CLI with mempalace MCP for token-optimized queries"
+    echo "Uses Claude Code with mempalace MCP for token-optimized queries"
     exit 1
     ;;
 esac

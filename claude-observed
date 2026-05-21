@@ -98,7 +98,7 @@ Rules:
 - Extract clearly and concisely
 - Include ALL filenames in tags
 - Detect technologies (docker, aws, kubernetes, bash, python, etc.)
-- tags = searchable keywords (lowercase, no spaces)" | q chat --no-interactive 2>&1)
+- tags = searchable keywords (lowercase, no spaces)" | claude -p --dangerously-skip-permissions 2>&1)
 
 # FIX 1: STRICT JSON VALIDATION - never pass invalid JSON
 JSON=$(echo "$RESULT" | python3 -c "
@@ -132,7 +132,7 @@ if [ -n "$JSON" ]; then
 fi
 
 if [ -z "$JSON" ]; then
-    echo "⚠️ Invalid JSON from Q → using fallback"
+    echo "⚠️ Invalid JSON from Claude → using fallback"
     
     JSON=$(jq -nc \
         --arg text "$SESSION_TEXT" \
@@ -144,7 +144,7 @@ if [ -z "$JSON" ]; then
             tasks: [],
             decisions: [],
             commands: [],
-            problems: ["Q returned invalid JSON"],
+            problems: ["Claude returned invalid JSON"],
             learnings: [],
             files_created: [],
             files_modified: [],

@@ -73,7 +73,7 @@ mkdir -p ~/.ai-observer/{casts,logs}
 mkdir -p ./failed-sessions
 
 # 8. Make scripts executable
-chmod +x q-observed claude-observed search-sessions latest-sessions stats.sh rtk-toggle.sh
+chmod +x q-observed claude-observed search-sessions latest-sessions stats.sh rtk-toggle.sh claude-toggle.sh claude-smart test-claude-components.sh mcp-ssh-wrapper.sh
 
 # 9. Configure RTK (disable for speed)
 if ! grep -q "AMAZONQ_RTK_ENABLED" ~/.bashrc 2>/dev/null; then
@@ -83,6 +83,20 @@ if ! grep -q "AMAZONQ_RTK_ENABLED" ~/.bashrc 2>/dev/null; then
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         echo "export AMAZONQ_RTK_ENABLED=false" >> ~/.bashrc
         echo "✅ RTK disabled (use ./rtk-toggle.sh to change)"
+    fi
+fi
+
+# 9b. Configure Claude Effort level
+if ! grep -q "CLAUDE_CODE_EFFORT_LEVEL" ~/.bashrc 2>/dev/null; then
+    echo ""
+    read -p "Configure Claude Code default effort? (low=faster startup, high=deep reasoning) (low/high/none): " -r EFFORT_CHOICE
+    echo
+    if [ "$EFFORT_CHOICE" = "low" ]; then
+        echo "export CLAUDE_CODE_EFFORT_LEVEL=low" >> ~/.bashrc
+        echo "✅ Claude effort set to low (use ./claude-toggle.sh to change)"
+    elif [ "$EFFORT_CHOICE" = "high" ]; then
+        echo "export CLAUDE_CODE_EFFORT_LEVEL=high" >> ~/.bashrc
+        echo "✅ Claude effort set to high (use ./claude-toggle.sh to change)"
     fi
 fi
 
@@ -105,5 +119,7 @@ echo "  ./q-observed       # Start Q with recording"
 echo "  ./claude-observed  # Start Claude with recording"
 echo "  ./search-sessions  # Search past work"
 echo "  ./rtk-toggle.sh    # Toggle RTK mode"
+echo "  ./claude-toggle.sh # Toggle Claude effort level"
+echo "  ./claude-smart     # Claude token-optimized queries"
 echo ""
-echo "Test it: ./q-observed"
+echo "Test Claude: ./test-claude-components.sh"
