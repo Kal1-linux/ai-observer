@@ -16,9 +16,17 @@ import asyncio
 import paramiko
 import io
 
-# Initialize SQLite waitlist DB
+# Initialize SQLite waitlist DB and Palace path dynamically
+# If we have a persistent volume at /app/data, write data there to prevent container reset erasure
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(BASE_DIR, "waitlist.db")
+PERSISTENT_DATA_DIR = "/app/data"
+if os.path.exists(PERSISTENT_DATA_DIR) and os.access(PERSISTENT_DATA_DIR, os.W_OK):
+    DB_PATH = os.path.join(PERSISTENT_DATA_DIR, "waitlist.db")
+    os.environ["MEMPALACE_PALACE_PATH"] = os.path.join(PERSISTENT_DATA_DIR, "palace")
+    print(f"📦 Persistent volume detected at {PERSISTENT_DATA_DIR}. Storing DB and memories in volume.")
+else:
+    DB_PATH = os.path.join(BASE_DIR, "waitlist.db")
+    print(f"📁 No persistent volume found. Storing DB locally at: {DB_PATH}")
 
 def init_db():
     conn = sqlite3.connect(DB_PATH)
