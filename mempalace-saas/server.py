@@ -1,5 +1,5 @@
 import uvicorn
-from fastapi import FastAPI, Depends, HTTPException, Security, Request
+from fastapi import FastAPI, Depends, HTTPException, Security, Request, Query
 from fastapi.security import APIKeyHeader
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -65,10 +65,18 @@ MOCK_DB = []
 
 api_key_header = APIKeyHeader(name="Authorization", auto_error=False)
 
-def get_tenant_id(api_key: str = Security(api_key_header)) -> str:
-    if not api_key or not api_key.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Missing or invalid token. Use 'Bearer <token>'")
-    token = api_key.replace("Bearer ", "")
+def get_tenant_id(
+    api_key: str = Security(api_key_header),
+    token_param: str = Query(None, alias="token")
+) -> str:
+    token = None
+    if api_key and api_key.startswith("Bearer "):
+        token = api_key.replace("Bearer ", "")
+    elif token_param:
+        token = token_param
+        
+    if not token:
+        raise HTTPException(status_code=401, detail="Missing or invalid token. Use 'Bearer <token>' header or '?token=<token>' query parameter")
     
     # 1. Check hardcoded developer tokens
     VALID_TOKENS = {
