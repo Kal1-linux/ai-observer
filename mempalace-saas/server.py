@@ -15,7 +15,8 @@ import uuid
 import asyncio
 
 # Initialize SQLite waitlist DB
-DB_PATH = "waitlist.db"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_PATH = os.path.join(BASE_DIR, "waitlist.db")
 
 def init_db():
     conn = sqlite3.connect(DB_PATH)
@@ -48,6 +49,49 @@ def setup_ssh_key():
 init_db()
 setup_ssh_key()
 
+# Load configuration from config.env if available
+MEMPALACE_SERVER = "192.168.1.137"
+for env_path in ["../config.env", "config.env", "/home/prathammodi/ai-observer/config.env"]:
+    if os.path.exists(env_path):
+        with open(env_path, "r") as f:
+            for line in f:
+                if "=" in line and not line.startswith("#"):
+                    k, v = line.strip().split("=", 1)
+                    os.environ[k.strip()] = v.strip()
+if "MEMPALACE_SERVER" in os.environ:
+    MEMPALACE_SERVER = os.environ["MEMPALACE_SERVER"]
+
+def remote_handle_request(payload):
+    # Enforce SSH execution of the entire payload on the remote mempalace.mcp_server
+    ssh_script = f"""
+cd /root/mempalace && source venv/bin/activate && python3 - <<'PYEOF'
+import json, sys
+from mempalace.mcp_server import handle_request
+payload = json.loads({repr(json.dumps(payload))})
+response = handle_request(payload)
+print(json.dumps(response))
+PYEOF
+"""
+    try:
+        process = subprocess.run(
+            ["ssh", "-o", "StrictHostKeyChecking=no", f"root@{MEMPALACE_SERVER}", "bash"],
+            input=ssh_script,
+            text=True,
+            capture_output=True
+        )
+        stdout_lines = process.stdout.strip().splitlines()
+        for line in stdout_lines:
+            line = line.strip()
+            if line.startswith("{"):
+                try:
+                    return json.loads(line)
+                except Exception:
+                    pass
+        # Fallback if no JSON found
+        return {"jsonrpc": "2.0", "id": payload.get("id"), "error": {"code": -32603, "message": f"No JSON response from remote SSH server. Stderr: {process.stderr}"}}
+    except Exception as e:
+        return {"jsonrpc": "2.0", "id": payload.get("id"), "error": {"code": -32603, "message": f"SSH bridge error: {e}"}}
+
 # Check if Mempalace Core is available locally (Option A)
 try:
     from mempalace.mcp_server import tool_add_drawer, tool_kg_add, tool_search, handle_request
@@ -55,8 +99,8 @@ try:
     print("🧠 Local Mempalace Database Core detected. Running in cloud-native Mode.")
 except ImportError:
     LOCAL_DATABASE_AVAILABLE = False
-    handle_request = None
-    print("🌉 Local Mempalace Database Core NOT detected. Running in remote SSH Bridge Mode.")
+    handle_request = remote_handle_request
+    print(f"🌉 Local Mempalace Database Core NOT detected. Running in remote SSH Bridge Mode targeting {MEMPALACE_SERVER}.")
 
 app = FastAPI(title="Mempalace SaaS MVP")
 
@@ -248,15 +292,15 @@ rm -f "$TMP_JSON"
 """
     
     try:
-        print("🌉 Bridging data to 192.168.1.137 Real Mempalace Database...")
+        print(f"🌉 Bridging data to {MEMPALACE_SERVER} Real Mempalace Database...")
         process = subprocess.run(
-            ["ssh", "-o", "StrictHostKeyChecking=no", "root@192.168.1.137", "bash"],
+            ["ssh", "-o", "StrictHostKeyChecking=no", f"root@{MEMPALACE_SERVER}", "bash"],
             input=ssh_script,
             text=True,
             capture_output=True
         )
         if "SUCCESS" in process.stdout:
-            print("✅ Successfully injected into real Mempalace on 192.168.1.137!")
+            print(f"✅ Successfully injected into real Mempalace on {MEMPALACE_SERVER}!")
         else:
             print(f"❌ Injection failed. stdout: {process.stdout} stderr: {process.stderr}")
     except Exception as e:
@@ -295,7 +339,7 @@ PYEOF
 """
     try:
         process = subprocess.run(
-            ["ssh", "-o", "StrictHostKeyChecking=no", "root@192.168.1.137", "bash"],
+            ["ssh", "-o", "StrictHostKeyChecking=no", f"root@{MEMPALACE_SERVER}", "bash"],
             input=ssh_script,
             text=True,
             capture_output=True
@@ -329,8 +373,8 @@ async def mcp_sse_connect(request: Request, tenant_id: str = Depends(get_tenant_
     Establish a Server-Sent Events (SSE) stream for Model Context Protocol.
     Protected by API key bearer auth mapping to tenant_id.
     """
-    if not LOCAL_DATABASE_AVAILABLE or not handle_request:
-        raise HTTPException(status_code=503, detail="Local Mempalace Core database not loaded")
+    if not handle_request:
+        raise HTTPException(status_code=503, detail="Mempalace Core database handler not loaded")
         
     session_id = str(uuid.uuid4())
     queue = asyncio.Queue()
@@ -378,8 +422,8 @@ async def mcp_receive_message(request: Request, sessionId: str):
     Handle POST messages from the client in the SSE connection session.
     Automatically intercepts and rewrites JSON-RPC arguments to enforce strict tenant isolation.
     """
-    if not LOCAL_DATABASE_AVAILABLE or not handle_request:
-        raise HTTPException(status_code=503, detail="Local Mempalace Core database not loaded")
+    if not handle_request:
+        raise HTTPException(status_code=503, detail="Mempalace Core database handler not loaded")
         
     session_data = active_mcp_sessions.get(sessionId)
     if not session_data:
@@ -431,11 +475,11 @@ async def mcp_receive_message(request: Request, sessionId: str):
     return {"status": "accepted"}
 
 # Serve static landing page
-app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
 
 @app.get("/")
 async def serve_landing():
-    return FileResponse("static/index.html")
+    return FileResponse(os.path.join(BASE_DIR, "static", "index.html"))
 
 class WaitlistPayload(BaseModel):
     email: str
@@ -502,5 +546,25 @@ async def get_waitlist(api_key: str = Security(api_key_header)):
         raise HTTPException(status_code=500, detail=f"Database error: {e}")
 
 if __name__ == "__main__":
-    print("🚀 Starting Mempalace SaaS Prototype on port 8000...")
-    uvicorn.run("server:app", host="127.0.0.1", port=8000, reload=True)
+    import sys
+    if "--stdio" in sys.argv:
+        # Loop over lines from standard input for Stdio MCP transport
+        try:
+            for line in sys.stdin:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    payload = json.loads(line)
+                    response = handle_request(payload)
+                    sys.stdout.write(json.dumps(response) + "\n")
+                    sys.stdout.flush()
+                except json.JSONDecodeError:
+                    print("Error: Invalid JSON input", file=sys.stderr)
+                except Exception as e:
+                    print(f"Error handling request: {e}", file=sys.stderr)
+        except KeyboardInterrupt:
+            pass
+    else:
+        print("🚀 Starting Mempalace SaaS Prototype on port 8000...")
+        uvicorn.run("server:app", host="127.0.0.1", port=8000, reload=True)
