@@ -126,6 +126,13 @@ PYEOF
 # Auto-force remote mode on Railway to ensure data is saved on the persistent VPS instead of ephemeral container disk
 FORCE_REMOTE = os.environ.get("MEMPALACE_FORCE_REMOTE", "false").lower() == "true" or "RAILWAY_STATIC_URL" in os.environ
 
+# Prevent recursive HTTP search deadlocks inside the FastAPI server process
+if not FORCE_REMOTE:
+    if "MEMPALACE_API_URL" in os.environ:
+        del os.environ["MEMPALACE_API_URL"]
+    if "MEMPALACE_API_KEY" in os.environ:
+        del os.environ["MEMPALACE_API_KEY"]
+
 if FORCE_REMOTE:
     LOCAL_DATABASE_AVAILABLE = False
     handle_request = remote_handle_request
