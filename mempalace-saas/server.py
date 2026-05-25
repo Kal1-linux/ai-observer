@@ -93,14 +93,22 @@ PYEOF
         return {"jsonrpc": "2.0", "id": payload.get("id"), "error": {"code": -32603, "message": f"SSH bridge error: {e}"}}
 
 # Check if Mempalace Core is available locally (Option A)
-try:
-    from mempalace.mcp_server import tool_add_drawer, tool_kg_add, tool_search, handle_request
-    LOCAL_DATABASE_AVAILABLE = True
-    print("🧠 Local Mempalace Database Core detected. Running in cloud-native Mode.")
-except ImportError:
+# Auto-force remote mode on Railway to ensure data is saved on the persistent VPS instead of ephemeral container disk
+FORCE_REMOTE = os.environ.get("MEMPALACE_FORCE_REMOTE", "false").lower() == "true" or "RAILWAY_STATIC_URL" in os.environ
+
+if FORCE_REMOTE:
     LOCAL_DATABASE_AVAILABLE = False
     handle_request = remote_handle_request
-    print(f"🌉 Local Mempalace Database Core NOT detected. Running in remote SSH Bridge Mode targeting {MEMPALACE_SERVER}.")
+    print(f"🌉 Forced Remote Mode (Railway/User forced). Running in remote SSH Bridge Mode targeting {MEMPALACE_SERVER}.")
+else:
+    try:
+        from mempalace.mcp_server import tool_add_drawer, tool_kg_add, tool_search, handle_request
+        LOCAL_DATABASE_AVAILABLE = True
+        print("🧠 Local Mempalace Database Core detected. Running in cloud-native Mode.")
+    except ImportError:
+        LOCAL_DATABASE_AVAILABLE = False
+        handle_request = remote_handle_request
+        print(f"🌉 Local Mempalace Database Core NOT detected. Running in remote SSH Bridge Mode targeting {MEMPALACE_SERVER}.")
 
 app = FastAPI(title="Mempalace SaaS MVP")
 
