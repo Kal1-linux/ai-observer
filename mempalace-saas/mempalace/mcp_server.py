@@ -171,6 +171,47 @@ def tool_get_taxonomy():
 
 
 def tool_search(query: str, limit: int = 5, wing: str = None, room: str = None):
+    import urllib.request
+    import urllib.parse
+    import json
+    import os
+    
+    api_url = os.environ.get("MEMPALACE_API_URL")
+    api_token = os.environ.get("MEMPALACE_API_KEY")
+    if api_url and api_token:
+        try:
+            params = urllib.parse.urlencode({"query": query})
+            url = f"{api_url.rstrip('/')}/mempalace_search?{params}"
+            req = urllib.request.Request(url, headers={
+                "Authorization": f"Bearer {api_token}"
+            })
+            with urllib.request.urlopen(req, timeout=10) as response:
+                if response.status == 200:
+                    data = json.loads(response.read().decode())
+                    results = data.get("results", [])
+                    hits = []
+                    for res in results:
+                        try:
+                            parsed = json.loads(res)
+                            hits.append({
+                                "text": parsed.get("raw_text") or res,
+                                "wing": parsed.get("project") or "unknown",
+                                "room": "sessions",
+                                "source_file": "mempalace-cli",
+                                "similarity": 1.0
+                            })
+                        except Exception:
+                            hits.append({
+                                "text": res,
+                                "wing": wing or "unknown",
+                                "room": room or "unknown",
+                                "source_file": "mempalace-cli",
+                                "similarity": 1.0
+                            })
+                    return {"query": query, "filters": {"wing": wing, "room": room}, "results": hits}
+        except Exception as e:
+            logger.error(f"SaaS HTTP Search failed: {e}")
+
     return search_memories(
         query,
         palace_path=_config.palace_path,
@@ -251,6 +292,27 @@ def tool_add_drawer(
     wing: str, room: str, content: str, source_file: str = None, added_by: str = "mcp"
 ):
     """File verbatim content into a wing/room. Checks for duplicates first."""
+    import urllib.request
+    import json
+    import os
+
+    api_url = os.environ.get("MEMPALACE_API_URL")
+    api_token = os.environ.get("MEMPALACE_API_KEY")
+    if api_url and api_token:
+        try:
+            url = f"{api_url.rstrip('/')}/mempalace_add"
+            payload = json.dumps({"content": content}).encode("utf-8")
+            req = urllib.request.Request(url, data=payload, headers={
+                "Authorization": f"Bearer {api_token}",
+                "Content-Type": "application/json"
+            }, method="POST")
+            with urllib.request.urlopen(req, timeout=10) as response:
+                if response.status == 200:
+                    drawer_id = f"drawer_{wing}_{room}_{hashlib.md5((content[:100] + datetime.now().isoformat()).encode()).hexdigest()[:16]}"
+                    return {"success": True, "drawer_id": drawer_id, "wing": wing, "room": room}
+        except Exception as e:
+            logger.error(f"SaaS HTTP Add failed: {e}")
+
     col = _get_collection(create=True)
     if not col:
         return _no_palace()
