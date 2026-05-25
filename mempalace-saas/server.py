@@ -332,10 +332,17 @@ async def mcp_sse_connect(request: Request, tenant_id: str = Depends(get_tenant_
     }
     print(f"🔌 New SSE MCP Session established: {session_id} for tenant: {tenant_id}")
     
+    # Construct absolute external base URL, honoring reverse proxy headers
+    scheme = request.headers.get("x-forwarded-proto", request.url.scheme)
+    host = request.headers.get("x-forwarded-host", request.url.netloc)
+    if not host:
+        host = request.url.netloc
+    base_url = f"{scheme}://{host}".rstrip("/")
+
     async def sse_event_generator():
         try:
             # yield initial endpoint event specifying where the client should post requests
-            yield f"event: endpoint\ndata: /message?sessionId={session_id}\n\n"
+            yield f"event: endpoint\ndata: {base_url}/message?sessionId={session_id}\n\n"
             
             while True:
                 # Wait for messages pushed to the session queue
