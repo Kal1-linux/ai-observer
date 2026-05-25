@@ -1,7 +1,7 @@
 import uvicorn
-from fastapi import FastAPI, Depends, HTTPException, Security
+from fastapi import FastAPI, Depends, HTTPException, Security, Request
 from fastapi.security import APIKeyHeader
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import os
@@ -12,6 +12,7 @@ import urllib.request
 import urllib.error
 import sqlite3
 import uuid
+import asyncio
 
 # Initialize SQLite waitlist DB
 DB_PATH = "waitlist.db"
@@ -49,11 +50,12 @@ setup_ssh_key()
 
 # Check if Mempalace Core is available locally (Option A)
 try:
-    from mempalace.mcp_server import tool_add_drawer, tool_kg_add, tool_search
+    from mempalace.mcp_server import tool_add_drawer, tool_kg_add, tool_search, handle_request
     LOCAL_DATABASE_AVAILABLE = True
     print("🧠 Local Mempalace Database Core detected. Running in cloud-native Mode.")
 except ImportError:
     LOCAL_DATABASE_AVAILABLE = False
+    handle_request = None
     print("🌉 Local Mempalace Database Core NOT detected. Running in remote SSH Bridge Mode.")
 
 app = FastAPI(title="Mempalace SaaS MVP")
@@ -310,6 +312,108 @@ PYEOF
     except Exception as e:
         print(f"❌ SSH search bridge failed: {e}")
         return {"status": "error", "message": f"Search failed: {e}"}
+
+active_mcp_sessions = {}
+
+@app.get("/sse")
+async def mcp_sse_connect(request: Request, tenant_id: str = Depends(get_tenant_id)):
+    """
+    Establish a Server-Sent Events (SSE) stream for Model Context Protocol.
+    Protected by API key bearer auth mapping to tenant_id.
+    """
+    if not LOCAL_DATABASE_AVAILABLE or not handle_request:
+        raise HTTPException(status_code=503, detail="Local Mempalace Core database not loaded")
+        
+    session_id = str(uuid.uuid4())
+    queue = asyncio.Queue()
+    active_mcp_sessions[session_id] = {
+        "queue": queue,
+        "tenant_id": tenant_id
+    }
+    print(f"🔌 New SSE MCP Session established: {session_id} for tenant: {tenant_id}")
+    
+    async def sse_event_generator():
+        try:
+            # yield initial endpoint event specifying where the client should post requests
+            yield f"event: endpoint\ndata: /message?sessionId={session_id}\n\n"
+            
+            while True:
+                # Wait for messages pushed to the session queue
+                message = await queue.get()
+                yield f"event: message\ndata: {message}\n\n"
+                queue.task_done()
+        except asyncio.CancelledError:
+            print(f"🔌 SSE connection closed for session: {session_id}")
+        finally:
+            active_mcp_sessions.pop(session_id, None)
+
+    return StreamingResponse(
+        sse_event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no"
+        }
+    )
+
+@app.post("/message")
+async def mcp_receive_message(request: Request, sessionId: str):
+    """
+    Handle POST messages from the client in the SSE connection session.
+    Automatically intercepts and rewrites JSON-RPC arguments to enforce strict tenant isolation.
+    """
+    if not LOCAL_DATABASE_AVAILABLE or not handle_request:
+        raise HTTPException(status_code=503, detail="Local Mempalace Core database not loaded")
+        
+    session_data = active_mcp_sessions.get(sessionId)
+    if not session_data:
+        raise HTTPException(status_code=404, detail="Session not found or expired")
+        
+    tenant_id = session_data["tenant_id"]
+    queue = session_data["queue"]
+    
+    try:
+        body = await request.body()
+        payload = json.loads(body.decode("utf-8"))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid JSON payload: {e}")
+        
+    # --- PROTOCOL LEVEL ARGUMENT REWRITER (Tenant Security Gate) ---
+    method = payload.get("method")
+    params = payload.get("params", {})
+    tool_name = params.get("name")
+    tool_args = params.get("arguments", {})
+    
+    if method == "tools/call" and tool_name:
+        # Enforce that all search and write tools are bound strictly to this tenant's wing
+        if tool_name in ["mempalace_search", "mempalace_check_duplicate", "mempalace_add_drawer"]:
+            tool_args["wing"] = tenant_id
+            print(f"🔒 Enforced JSON-RPC wing isolation parameter for {tool_name} -> {tenant_id}")
+        elif tool_name in ["mempalace_kg_add", "mempalace_kg_query", "mempalace_kg_invalidate", "mempalace_kg_timeline"]:
+            # Enforce that all KG queries and updates are restricted to the tenant
+            if "subject" in tool_args or tool_name == "mempalace_kg_add":
+                tool_args["subject"] = tenant_id
+            if "entity" in tool_args or tool_name in ["mempalace_kg_query", "mempalace_kg_timeline"]:
+                tool_args["entity"] = tenant_id
+            print(f"🔒 Enforced JSON-RPC KG isolation parameter for {tool_name} -> {tenant_id}")
+            
+    # Process the request synchronously (or in an executor)
+    try:
+        loop = asyncio.get_running_loop()
+        response_dict = await loop.run_in_executor(None, handle_request, payload)
+    except Exception as e:
+        print(f"❌ MCP handle_request exception: {e}")
+        response_dict = {
+            "jsonrpc": "2.0",
+            "id": payload.get("id"),
+            "error": {"code": -32603, "message": f"Internal handler error: {e}"}
+        }
+        
+    # Push the response dictionary onto the SSE session queue to stream it back to the client
+    await queue.put(json.dumps(response_dict))
+    
+    return {"status": "accepted"}
 
 # Serve static landing page
 app.mount("/static", StaticFiles(directory="static"), name="static")
