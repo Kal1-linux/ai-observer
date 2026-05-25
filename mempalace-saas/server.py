@@ -13,6 +13,8 @@ import urllib.error
 import sqlite3
 import uuid
 import asyncio
+import paramiko
+import io
 
 # Initialize SQLite waitlist DB
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -61,6 +63,31 @@ for env_path in ["../config.env", "config.env", "/home/prathammodi/ai-observer/c
 if "MEMPALACE_SERVER" in os.environ:
     MEMPALACE_SERVER = os.environ["MEMPALACE_SERVER"]
 
+def run_ssh_command(cmd: str):
+    ssh = paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    
+    # Load private key from env or file
+    private_key_str = os.environ.get("SSH_PRIVATE_KEY")
+    if private_key_str:
+        try:
+            pkey = paramiko.RSAKey.from_private_key(io.StringIO(private_key_str.strip()))
+        except Exception:
+            pkey = paramiko.RSAKey.from_private_key_file(os.path.expanduser("~/.ssh/id_rsa"))
+    else:
+        # Load from file fallback
+        key_path = os.path.expanduser("~/.ssh/id_rsa")
+        pkey = paramiko.RSAKey.from_private_key_file(key_path)
+        
+    ssh.connect(MEMPALACE_SERVER, username="root", pkey=pkey, timeout=15)
+    stdin, stdout, stderr = ssh.exec_command(cmd)
+    
+    stdout_str = stdout.read().decode("utf-8")
+    stderr_str = stderr.read().decode("utf-8")
+    ssh.close()
+    
+    return stdout_str, stderr_str
+
 def remote_handle_request(payload):
     # Enforce SSH execution of the entire payload on the remote mempalace.mcp_server
     ssh_script = f"""
@@ -73,13 +100,8 @@ print(json.dumps(response))
 PYEOF
 """
     try:
-        process = subprocess.run(
-            ["ssh", "-o", "StrictHostKeyChecking=no", f"root@{MEMPALACE_SERVER}", "bash"],
-            input=ssh_script,
-            text=True,
-            capture_output=True
-        )
-        stdout_lines = process.stdout.strip().splitlines()
+        stdout_str, stderr_str = run_ssh_command(ssh_script)
+        stdout_lines = stdout_str.strip().splitlines()
         for line in stdout_lines:
             line = line.strip()
             if line.startswith("{"):
@@ -88,7 +110,7 @@ PYEOF
                 except Exception:
                     pass
         # Fallback if no JSON found
-        return {"jsonrpc": "2.0", "id": payload.get("id"), "error": {"code": -32603, "message": f"No JSON response from remote SSH server. Stderr: {process.stderr}"}}
+        return {"jsonrpc": "2.0", "id": payload.get("id"), "error": {"code": -32603, "message": f"No JSON response from remote SSH server. Stderr: {stderr_str}"}}
     except Exception as e:
         return {"jsonrpc": "2.0", "id": payload.get("id"), "error": {"code": -32603, "message": f"SSH bridge error: {e}"}}
 
@@ -301,16 +323,11 @@ rm -f "$TMP_JSON"
     
     try:
         print(f"🌉 Bridging data to {MEMPALACE_SERVER} Real Mempalace Database...")
-        process = subprocess.run(
-            ["ssh", "-o", "StrictHostKeyChecking=no", f"root@{MEMPALACE_SERVER}", "bash"],
-            input=ssh_script,
-            text=True,
-            capture_output=True
-        )
-        if "SUCCESS" in process.stdout:
+        stdout_str, stderr_str = run_ssh_command(ssh_script)
+        if "SUCCESS" in stdout_str:
             print(f"✅ Successfully injected into real Mempalace on {MEMPALACE_SERVER}!")
         else:
-            print(f"❌ Injection failed. stdout: {process.stdout} stderr: {process.stderr}")
+            print(f"❌ Injection failed. stdout: {stdout_str} stderr: {stderr_str}")
     except Exception as e:
         print(f"❌ SSH bridge failed: {e}")
     
@@ -346,14 +363,9 @@ print(json.dumps(results))
 PYEOF
 """
     try:
-        process = subprocess.run(
-            ["ssh", "-o", "StrictHostKeyChecking=no", f"root@{MEMPALACE_SERVER}", "bash"],
-            input=ssh_script,
-            text=True,
-            capture_output=True
-        )
-        
-        stdout_lines = process.stdout.strip().splitlines()
+        stdout_str, stderr_str = run_ssh_command(ssh_script)
+
+        stdout_lines = stdout_str.strip().splitlines()
         formatted_results = []
         for line in stdout_lines:
             line = line.strip()
