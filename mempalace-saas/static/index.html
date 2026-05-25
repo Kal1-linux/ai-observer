@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mempalace - Secure Private Memory for AI Coding Assistants</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-dark: hsl(224, 71%, 4%);
+            --card-bg: rgba(13, 20, 38, 0.45);
+            --border-color: rgba(99, 102, 241, 0.15);
+            --border-hover: rgba(99, 102, 241, 0.35);
+            --primary: hsl(263, 90%, 65%);
+            --primary-glow: hsla(263, 90%, 65%, 0.35);
+            --accent: hsl(190, 90%, 50%);
+            --accent-glow: hsla(190, 90%, 50%, 0.3);
+            --text-main: hsl(210, 40%, 98%);
+            --text-muted: hsl(215, 20%, 65%);
+            --terminal-bg: hsl(222, 47%, 6%);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+            line-height: 1.6;
+        }
+
+        /* Abstract Background Glows */
+        .glow-sphere-1 {
+            position: absolute;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, var(--primary-glow) 0%, transparent 70%);
+            top: -200px;
+            left: -100px;
+            z-index: -1;
+            filter: blur(80px);
+            pointer-events: none;
+        }
+
+        .glow-sphere-2 {
+            position: absolute;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+            top: 400px;
+            right: -100px;
+            z-index: -1;
+            filter: blur(80px);
+            pointer-events: none;
+        }
+
+        /* Container & Navbar */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        header {
+            padding: 2rem 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.8rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--text-main) 30%, var(--primary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .logo-dot {
+            width: 10px;
+            height: 10px;
+            background-color: var(--accent);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--accent);
+        }
+
+        .nav-links a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.95rem;
+            font-weight: 500;
+            transition: color 0.3s ease;
+            margin-left: 2rem;
+        }
+
+        .nav-links a:hover {
+            color: var(--text-main);
+        }
+
+        /* Hero Section */
+        .hero {
+            display: grid;
+            grid-template-columns: 1.1fr 0.9fr;
+            gap: 4rem;
+            align-items: center;
+            padding: 6rem 0;
+        }
+
+        @media (max-width: 968px) {
+            .hero {
+                grid-template-columns: 1fr;
+                text-align: center;
+                padding: 4rem 0;
+            }
+        }
+
+        .hero-content h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 3.5rem;
+            font-weight: 800;
+            line-height: 1.15;
+            letter-spacing: -0.03em;
+            margin-bottom: 1.5rem;
+            background: linear-gradient(135deg, var(--text-main) 50%, hsl(240, 20%, 80%) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero-content h1 span {
+            background: linear-gradient(135deg, var(--primary) 30%, var(--accent) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero-content p {
+            font-size: 1.15rem;
+            color: var(--text-muted);
+            margin-bottom: 2.5rem;
+            max-width: 580px;
+        }
+
+        /* Glassmorphic Signup Box */
+        .waitlist-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 2.5rem;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            transition: border 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .waitlist-card:hover {
+            border: 1px solid var(--border-hover);
+            box-shadow: 0 8px 32px 0 rgba(99, 102, 241, 0.08);
+        }
+
+        .waitlist-card h3 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .waitlist-card p {
+            font-size: 0.95rem;
+            color: var(--text-muted);
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group {
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        .form-input {
+            flex-grow: 1;
+            background-color: rgba(2, 6, 23, 0.6);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 0.85rem 1rem;
+            color: var(--text-main);
+            font-family: inherit;
+            font-size: 0.95rem;
+            transition: border 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px var(--primary-glow);
+        }
+
+        .btn-submit {
+            background: linear-gradient(135deg, var(--primary) 0%, hsl(263, 90%, 55%) 100%);
+            border: none;
+            border-radius: 12px;
+            padding: 0.85rem 1.75rem;
+            color: white;
+            font-family: inherit;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            box-shadow: 0 4px 14px var(--primary-glow);
+            transition: opacity 0.2s ease, transform 0.1s ease;
+        }
+
+        .btn-submit:hover {
+            opacity: 0.95;
+            transform: translateY(-1px);
+        }
+
+        .btn-submit:active {
+            transform: translateY(1px);
+        }
+
+        /* API Success Container */
+        .api-success-container {
+            display: none;
+            margin-top: 1rem;
+            animation: fadeIn 0.5s ease forwards;
+        }
+
+        .api-key-box {
+            background-color: rgba(2, 6, 23, 0.8);
+            border: 1px dashed var(--accent);
+            border-radius: 12px;
+            padding: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .api-key-text {
+            font-family: 'Fira Code', monospace;
+            color: var(--accent);
+            font-weight: 500;
+            font-size: 0.9rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .btn-copy {
+            background-color: rgba(99, 102, 241, 0.15);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 0.35rem 0.75rem;
+            color: var(--text-main);
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        .btn-copy:hover {
+            background-color: rgba(99, 102, 241, 0.3);
+        }
+
+        .install-guide {
+            background-color: var(--terminal-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.25rem;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            overflow-x: auto;
+        }
+
+        .install-guide span {
+            color: var(--accent);
+        }
+
+        /* Interactive Terminal Mockup */
+        .terminal-container {
+            width: 100%;
+            background: var(--terminal-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+            overflow: hidden;
+            height: 380px;
+            display: flex;
+            flex-direction: column;
+            text-align: left;
+        }
+
+        .terminal-header {
+            background-color: rgba(2, 6, 23, 0.5);
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .terminal-dots {
+            display: flex;
+            gap: 6px;
+        }
+
+        .terminal-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .dot-red { background-color: #ef4444; }
+        .dot-yellow { background-color: #f59e0b; }
+        .dot-green { background-color: #10b981; }
+
+        .terminal-title {
+            font-family: 'Fira Code', monospace;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .terminal-body {
+            padding: 1.25rem;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.85rem;
+            color: #d1d5db;
+            flex-grow: 1;
+            overflow-y: auto;
+            line-height: 1.5;
+        }
+
+        .prompt {
+            color: var(--accent);
+            font-weight: bold;
+        }
+
+        .terminal-log {
+            margin-bottom: 0.5rem;
+            white-space: pre-wrap;
+        }
+
+        .line-loading {
+            color: var(--text-muted);
+            animation: pulse 1.5s infinite;
+        }
+
+        .line-scrub {
+            color: #fb7185;
+            font-weight: 500;
+        }
+
+        .line-server {
+            color: #c084fc;
+            font-weight: 500;
+        }
+
+        .line-success {
+            color: #34d399;
+            font-weight: bold;
+        }
+
+        /* Key Highlights Grid */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            padding: 6rem 0;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .feature-card {
+            background-color: rgba(13, 20, 38, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            border-radius: 16px;
+            padding: 2rem;
+            transition: transform 0.3s ease, border-color 0.3s ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--border-hover);
+        }
+
+        .feature-icon {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        .feature-card h4 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .feature-card p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 1; }
+        }
+
+        /* Footer */
+        footer {
+            padding: 3rem 0;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="glow-sphere-1"></div>
+    <div class="glow-sphere-2"></div>
+
+    <div class="container">
+        <!-- Navbar -->
+        <header>
+            <div class="logo">
+                Mempalace <span class="logo-dot"></span>
+            </div>
+            <div class="nav-links">
+                <a href="#features">Features</a>
+                <a href="#demo">Demo</a>
+                <a href="https://github.com/prathammodi/ai-observer" target="_blank">Github</a>
+            </div>
+        </header>
+
+        <!-- Hero Section -->
+        <main class="hero">
+            <!-- Left Side: Content & Waitlist -->
+            <div class="hero-content">
+                <h1>The Secure <span>Private Memory Layer</span> for AI Coding Assistants</h1>
+                <p>Mempalace silently observes your terminal, automatically redacts secrets locally, and builds a permanent knowledge graph of your technical accomplishments for Claude Desktop, Cursor, and Q.</p>
+                
+                <!-- Waitlist Form Card -->
+                <div class="waitlist-card" id="signup-box">
+                    <h3>Get Instant Access to the Beta</h3>
+                    <p>Enter your email to generate your free local API token and try Mempalace immediately.</p>
+                    
+                    <form id="waitlist-form" onsubmit="handleSignup(event)">
+                        <div class="form-group">
+                            <input type="email" id="email" class="form-input" placeholder="you@example.com" required>
+                            <button type="submit" class="btn-submit" id="submit-btn">Get API Key</button>
+                        </div>
+                    </form>
+
+                    <!-- Hidden API Success Output -->
+                    <div class="api-success-container" id="success-box">
+                        <div class="api-key-box">
+                            <span class="api-key-text" id="api-key-display">Generating...</span>
+                            <button class="btn-copy" onclick="copyApiKey()" id="copy-btn">Copy</button>
+                        </div>
+                        <div class="install-guide">
+                            # Install Mempalace Secure CLI<br>
+                            pip install mempalace-cli<br><br>
+                            # Set your API Key in your shell<br>
+                            export MEMPALACE_API_KEY="<span id="api-key-shell">...</span>"<br><br>
+                            # Start observing your workspace<br>
+                            mempalace run "bash"
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Side: Live Terminal Simulation -->
+            <div id="demo">
+                <div class="terminal-container">
+                    <div class="terminal-header">
+                        <div class="terminal-dots">
+                            <div class="terminal-dot dot-red"></div>
+                            <div class="terminal-dot dot-yellow"></div>
+                            <div class="terminal-dot dot-green"></div>
+                        </div>
+                        <div class="terminal-title">mempalace-observer.sh</div>
+                        <div></div>
+                    </div>
+                    <div class="terminal-body" id="terminal-content">
+                        <!-- Content will be typed out dynamically via JS -->
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Features Grid -->
+        <section class="features-grid" id="features">
+            <div class="feature-card">
+                <div class="feature-icon">🔒</div>
+                <h4>Zero-Leak Local Scrubber</h4>
+                <p>Never leak credentials. All AWS keys, Anthropic tokens, and email addresses are securely redacted locally inside the sandbox before your session leaves your computer.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🧠</div>
+                <h4>Infinite AI Memory Recall</h4>
+                <p>Swaps direct SSH models for a unified, secure HTTP-only MCP layer. Claude Desktop, Q, or Cursor can fetch past tasks, configurations, and commands in milliseconds.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">⚡</div>
+                <h4>Free AI Summarization</h4>
+                <p>Fully integrated with OpenRouter free-tier LLM models. Automatically processes and indexes your terminal logs without incurring a single cent in token fees.</p>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer>
+            &copy; 2026 Mempalace. Fully open-source and developer-focused.
+        </footer>
+    </div>
+
+    <!-- JS Terminal Simulator & Waitlist Handler -->
+    <script>
+        // 1. Simulation Script
+        const simulationLines = [
+            { text: "$ mempalace run 'echo \"Deploying EC2 instance to 10.0.0.12 with AWS key AKIAIOSFODNN7EX and Anthropic key sk-ant-api03-abcdef\"'", isInput: true },
+            { text: "🤖 Mempalace SaaS - Secure Observer Active\n---------------------------------", class: "line-loading" },
+            { text: "🧹 Scrubbing local secrets inside local sandbox...", class: "line-loading" },
+            { text: "🔒 Scrubbed: User deployed EC2 instance to [REDACTED_IP] using AWS key [REDACTED_AWS_KEY] and Anthropic key [REDACTED_API_KEY]", class: "line-scrub" },
+            { text: "🚀 Sending sanitized session log to Mempalace Cloud API...", class: "line-loading" },
+            { text: "🧠 Cloud AI Gateway: Running OpenRouter AI Summarization...", class: "line-server" },
+            { text: "✅ OpenRouter Summarization Successful!\n   - Summary: User successfully deployed an EC2 instance.", class: "line-success" },
+            { text: "🌉 Bridging data securely to VPS Database...", class: "line-loading" },
+            { text: "✅ Successfully injected into Mempalace Database!", class: "line-success" },
+            { text: "🎉 End-to-End Pipeline Complete. Session recorded securely.", class: "line-success" }
+        ];
+
+        const terminalContent = document.getElementById("terminal-content");
+
+        async function typeSimulation() {
+            terminalContent.innerHTML = "";
+            for (let line of simulationLines) {
+                const element = document.createElement("div");
+                element.className = "terminal-log " + (line.class || "");
+                
+                if (line.isInput) {
+                    const promptSpan = document.createElement("span");
+                    promptSpan.className = "prompt";
+                    promptSpan.innerText = "pratham@BR47:~ ";
+                    element.appendChild(promptSpan);
+                    terminalContent.appendChild(element);
+                    
+                    // Type out input character by character
+                    for (let char of line.text) {
+                        element.innerHTML += char;
+                        await new Promise(resolve => setTimeout(resolve, 30));
+                    }
+                } else {
+                    element.innerText = line.text;
+                    terminalContent.appendChild(element);
+                    await new Promise(resolve => setTimeout(resolve, 800));
+                }
+                terminalContent.scrollTop = terminalContent.scrollHeight;
+            }
+            // Loop the simulation after 5 seconds
+            await new Promise(resolve => setTimeout(resolve, 5000));
+            typeSimulation();
+        }
+
+        // Start typing simulation immediately on load
+        window.addEventListener("DOMContentLoaded", typeSimulation);
+
+        // 2. Waitlist Handler
+        async function handleSignup(event) {
+            event.preventDefault();
+            const emailInput = document.getElementById("email");
+            const submitBtn = document.getElementById("submit-btn");
+            const successBox = document.getElementById("success-box");
+            const apiKeyDisplay = document.getElementById("api-key-display");
+            const apiKeyShell = document.getElementById("api-key-shell");
+
+            submitBtn.innerText = "Processing...";
+            submitBtn.disabled = true;
+
+            try {
+                // Post waitlist signup directly to the FastAPI server
+                const response = await fetch("/waitlist", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ email: emailInput.value })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const apiKey = data.api_key || "test-token-123";
+                    
+                    apiKeyDisplay.innerText = apiKey;
+                    apiKeyShell.innerText = apiKey;
+                    successBox.style.display = "block";
+                    
+                    // Smooth scroll to install guide
+                    setTimeout(() => {
+                        successBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    }, 100);
+                } else {
+                    alert("Error signing up. Please try again.");
+                    submitBtn.innerText = "Get API Key";
+                    submitBtn.disabled = false;
+                }
+            } catch (error) {
+                console.error("Signup failed:", error);
+                // Fallback demo key generator in case the server database logic is in dev mode
+                const randomToken = "sk-mp-" + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+                apiKeyDisplay.innerText = randomToken;
+                apiKeyShell.innerText = randomToken;
+                successBox.style.display = "block";
+            }
+        }
+
+        function copyApiKey() {
+            const apiKeyText = document.getElementById("api-key-display").innerText;
+            navigator.clipboard.writeText(apiKeyText).then(() => {
+                const copyBtn = document.getElementById("copy-btn");
+                copyBtn.innerText = "Copied!";
+                setTimeout(() => {
+                    copyBtn.innerText = "Copy";
+                }, 2000);
+            });
+        }
+    </script>
+</body>
+</html>
