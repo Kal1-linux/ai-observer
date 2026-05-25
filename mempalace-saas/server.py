@@ -123,8 +123,10 @@ PYEOF
         return {"jsonrpc": "2.0", "id": payload.get("id"), "error": {"code": -32603, "message": f"SSH bridge error: {e}"}}
 
 # Check if Mempalace Core is available locally (Option A)
-# Auto-force remote mode on Railway to ensure data is saved on the persistent VPS instead of ephemeral container disk
-FORCE_REMOTE = os.environ.get("MEMPALACE_FORCE_REMOTE", "false").lower() == "true" or "RAILWAY_STATIC_URL" in os.environ
+# Auto-force remote mode on Railway to ensure data is saved on the persistent VPS unless the user explicitly wants local cloud-native mode
+FORCE_REMOTE = os.environ.get("MEMPALACE_FORCE_REMOTE", "false").lower() == "true"
+if "RAILWAY_STATIC_URL" in os.environ and os.environ.get("MEMPALACE_FORCE_REMOTE", "").lower() != "false":
+    FORCE_REMOTE = True
 
 # Prevent recursive HTTP search deadlocks inside the FastAPI server process
 if not FORCE_REMOTE:
