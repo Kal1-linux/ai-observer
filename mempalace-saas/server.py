@@ -47,6 +47,15 @@ def setup_ssh_key():
 init_db()
 setup_ssh_key()
 
+# Check if Mempalace Core is available locally (Option A)
+try:
+    from mempalace.mcp_server import tool_add_drawer, tool_kg_add, tool_search
+    LOCAL_DATABASE_AVAILABLE = True
+    print("🧠 Local Mempalace Database Core detected. Running in cloud-native Mode.")
+except ImportError:
+    LOCAL_DATABASE_AVAILABLE = False
+    print("🌉 Local Mempalace Database Core NOT detected. Running in remote SSH Bridge Mode.")
+
 app = FastAPI(title="Mempalace SaaS MVP")
 
 # Mock Database
@@ -144,7 +153,7 @@ Session text:
     
     # 1. Format the data to match the strict Mempalace Graph JSON schema
     db_json = {
-        "project": "mempalace-cli",
+        "project": tenant_id,
         "timestamp": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "summary": summary_text,
         "tasks": tasks,
@@ -161,7 +170,34 @@ Session text:
     
     json_string = json.dumps(db_json)
     
-    # 2. Execute the bridge injection via SSH to the real VPS
+    if LOCAL_DATABASE_AVAILABLE:
+        try:
+            print("🧠 Running cloud-native in-process database query...")
+            source_file = f"mempalace-cli-{int(datetime.datetime.now().timestamp())}"
+            result = tool_add_drawer(
+                wing=tenant_id,
+                room="sessions",
+                content=json_string,
+                source_file=source_file,
+                added_by="mempalace-cli"
+            )
+            if result.get("success"):
+                tool_kg_add(
+                    subject=tenant_id,
+                    predicate="worked_on",
+                    object=summary_text[:100],
+                    valid_from=db_json["timestamp"].split("T")[0]
+                )
+                print(f"✅ Successfully saved memory in-process for {tenant_id}!")
+                return {"status": "success", "message": f"✅ Memory saved in-process securely for {tenant_id}!"}
+            else:
+                print(f"❌ In-process save failed: {result}")
+                raise HTTPException(status_code=500, detail=f"Database save failed: {result}")
+        except Exception as e:
+            print(f"❌ In-process save exception: {e}")
+            raise HTTPException(status_code=500, detail=f"Database save exception: {e}")
+            
+    # 2. Execute the bridge injection via SSH to the real VPS (Fallback)
     ssh_script = f"""
 TMP_JSON=$(mktemp)
 cat > "$TMP_JSON" <<'JSONEOF'
@@ -224,7 +260,21 @@ rm -f "$TMP_JSON"
 async def search_memory(query: str, tenant_id: str = Depends(get_tenant_id)):
     print(f"\n🔍 [Cloud AI Worker] Searching sessions for {tenant_id} matching '{query}'...")
     
-    # Securely query the remote VPS database over SSH in the background
+    if LOCAL_DATABASE_AVAILABLE:
+        try:
+            print(f"🧠 Running cloud-native in-process database search for {tenant_id}...")
+            data = tool_search(query=query, limit=10, wing=tenant_id)
+            formatted_results = []
+            if "results" in data:
+                hits = data.get("results", [])
+                for hit in hits:
+                    formatted_results.append(hit.get("text", ""))
+            return {"status": "success", "results": formatted_results}
+        except Exception as e:
+            print(f"❌ In-process search failed: {e}")
+            return {"status": "error", "message": f"Search failed: {e}"}
+            
+    # Securely query the remote VPS database over SSH in the background (Fallback)
     ssh_script = f"""
 cd /root/mempalace && source venv/bin/activate && python3 - <<'PYEOF'
 from mempalace.mcp_server import tool_search
