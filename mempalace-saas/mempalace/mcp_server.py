@@ -30,24 +30,50 @@ from .palace_graph import traverse, find_tunnels, graph_stats
 import chromadb
 
 from .knowledge_graph import KnowledgeGraph
-
-_kg = KnowledgeGraph()
+from .tenants import current_tenant
 
 logging.basicConfig(level=logging.INFO, format="%(message)s", stream=sys.stderr)
 logger = logging.getLogger("mempalace_mcp")
 
 _config = MempalaceConfig()
 
+# Global (single-user/legacy) KG, created lazily. Tenant KGs are cached per path.
+_kg_cache = {}
+
+
+def _palace_path() -> str:
+    """Palace path for the active tenant, or the global default."""
+    tenant = current_tenant.get()
+    return tenant.palace_path if tenant else _config.palace_path
+
+
+def _get_kg() -> KnowledgeGraph:
+    """Knowledge graph for the active tenant, or the global default."""
+    tenant = current_tenant.get()
+    key = tenant.kg_path if tenant else "__global__"
+    if key not in _kg_cache:
+        _kg_cache[key] = KnowledgeGraph(db_path=tenant.kg_path) if tenant else KnowledgeGraph()
+    return _kg_cache[key]
+
 
 def _get_collection(create=False):
-    """Return the ChromaDB collection, or None on failure."""
+    """Return the ChromaDB collection for the active tenant, or None on failure."""
     try:
-        client = chromadb.PersistentClient(path=_config.palace_path)
+        client = chromadb.PersistentClient(path=_palace_path())
         if create:
             return client.get_or_create_collection(_config.collection_name)
         return client.get_collection(_config.collection_name)
     except Exception:
         return None
+
+
+def _normalize_slug(name: str) -> str:
+    """Normalize wing/room names so 'Testing', 'testing ' and 'TESTING'
+    land in the same place. Lowercase, alphanumerics + underscores only."""
+    import re
+
+    slug = re.sub(r"[^a-z0-9]+", "_", (name or "").strip().lower()).strip("_")
+    return slug or "unknown"
 
 
 def _no_palace():
@@ -80,7 +106,7 @@ def tool_status():
         "total_drawers": count,
         "wings": wings,
         "rooms": rooms,
-        "palace_path": _config.palace_path,
+        "palace_path": _palace_path(),
         "protocol": PALACE_PROTOCOL,
         "aaak_dialect": AAAK_SPEC,
     }
@@ -212,13 +238,52 @@ def tool_search(query: str, limit: int = 5, wing: str = None, room: str = None):
         except Exception as e:
             logger.error(f"SaaS HTTP Search failed: {e}")
 
-    return search_memories(
+    result = search_memories(
         query,
-        palace_path=_config.palace_path,
+        palace_path=_palace_path(),
         wing=wing,
         room=room,
         n_results=limit,
     )
+
+    # Hybrid retrieval: semantic search misses exact strings (IDs, error
+    # messages, codes). Merge in verbatim substring matches from ChromaDB.
+    try:
+        col = _get_collection()
+        if col and isinstance(result, dict):
+            seen = {r.get("text") for r in result.get("results", [])}
+            where = None
+            if wing and room:
+                where = {"$and": [{"wing": wing}, {"room": room}]}
+            elif wing:
+                where = {"wing": wing}
+            elif room:
+                where = {"room": room}
+            kwargs = {
+                "where_document": {"$contains": query},
+                "include": ["documents", "metadatas"],
+                "limit": limit,
+            }
+            if where:
+                kwargs["where"] = where
+            exact = col.get(**kwargs)
+            for doc, meta in zip(exact["documents"], exact["metadatas"]):
+                if doc in seen:
+                    continue
+                result.setdefault("results", []).append(
+                    {
+                        "text": doc,
+                        "wing": meta.get("wing", "?"),
+                        "room": meta.get("room", "?"),
+                        "source_file": meta.get("source_file", ""),
+                        "similarity": 1.0,
+                        "match": "exact",
+                    }
+                )
+    except Exception:
+        pass
+
+    return result
 
 
 def tool_check_duplicate(content: str, threshold: float = 0.9):
@@ -317,6 +382,9 @@ def tool_add_drawer(
     if not col:
         return _no_palace()
 
+    wing = _normalize_slug(wing)
+    room = _normalize_slug(room)
+
     # Duplicate check
     dup = tool_check_duplicate(content, threshold=0.9)
     if dup.get("is_duplicate"):
@@ -324,6 +392,7 @@ def tool_add_drawer(
             "success": False,
             "reason": "duplicate",
             "matches": dup["matches"],
+            "hint": "If this is an updated version of the matched memory, call mempalace_update_drawer with the matched drawer id instead.",
         }
 
     drawer_id = f"drawer_{wing}_{room}_{hashlib.md5((content[:100] + datetime.now().isoformat()).encode()).hexdigest()[:16]}"
@@ -349,6 +418,39 @@ def tool_add_drawer(
         return {"success": False, "error": str(e)}
 
 
+def tool_update_drawer(drawer_id: str, content: str = None, wing: str = None, room: str = None):
+    """Update a drawer's content and/or move it. Re-embeds on content change."""
+    col = _get_collection()
+    if not col:
+        return _no_palace()
+    existing = col.get(ids=[drawer_id], include=["documents", "metadatas"])
+    if not existing["ids"]:
+        return {"success": False, "error": f"Drawer not found: {drawer_id}"}
+    meta = existing["metadatas"][0]
+    old_content = existing["documents"][0]
+    if wing:
+        meta["wing"] = _normalize_slug(wing)
+    if room:
+        meta["room"] = _normalize_slug(room)
+    meta["updated_at"] = datetime.now().isoformat()
+    try:
+        col.update(
+            ids=[drawer_id],
+            documents=[content if content is not None else old_content],
+            metadatas=[meta],
+        )
+        logger.info(f"Updated drawer: {drawer_id} → {meta['wing']}/{meta['room']}")
+        return {
+            "success": True,
+            "drawer_id": drawer_id,
+            "wing": meta["wing"],
+            "room": meta["room"],
+            "content_changed": content is not None and content != old_content,
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
 def tool_delete_drawer(drawer_id: str):
     """Delete a single drawer by ID."""
     col = _get_collection()
@@ -370,7 +472,7 @@ def tool_delete_drawer(drawer_id: str):
 
 def tool_kg_query(entity: str, as_of: str = None, direction: str = "both"):
     """Query the knowledge graph for an entity's relationships."""
-    results = _kg.query_entity(entity, as_of=as_of, direction=direction)
+    results = _get_kg().query_entity(entity, as_of=as_of, direction=direction)
     return {"entity": entity, "as_of": as_of, "facts": results, "count": len(results)}
 
 
@@ -378,7 +480,7 @@ def tool_kg_add(
     subject: str, predicate: str, object: str, valid_from: str = None, source_closet: str = None
 ):
     """Add a relationship to the knowledge graph."""
-    triple_id = _kg.add_triple(
+    triple_id = _get_kg().add_triple(
         subject, predicate, object, valid_from=valid_from, source_closet=source_closet
     )
     return {"success": True, "triple_id": triple_id, "fact": f"{subject} → {predicate} → {object}"}
@@ -386,7 +488,7 @@ def tool_kg_add(
 
 def tool_kg_invalidate(subject: str, predicate: str, object: str, ended: str = None):
     """Mark a fact as no longer true (set end date)."""
-    _kg.invalidate(subject, predicate, object, ended=ended)
+    _get_kg().invalidate(subject, predicate, object, ended=ended)
     return {
         "success": True,
         "fact": f"{subject} → {predicate} → {object}",
@@ -396,13 +498,13 @@ def tool_kg_invalidate(subject: str, predicate: str, object: str, ended: str = N
 
 def tool_kg_timeline(entity: str = None):
     """Get chronological timeline of facts, optionally for one entity."""
-    results = _kg.timeline(entity)
+    results = _get_kg().timeline(entity)
     return {"entity": entity or "all", "timeline": results, "count": len(results)}
 
 
 def tool_kg_stats():
     """Knowledge graph overview: entities, triples, relationship types."""
-    return _kg.stats()
+    return _get_kg().stats()
 
 
 # ==================== AGENT DIARY ====================
@@ -647,8 +749,22 @@ TOOLS = {
         "input_schema": {"type": "object", "properties": {}},
         "handler": tool_graph_stats,
     },
+    "mempalace_update_drawer": {
+        "description": "Update an existing drawer's content and/or move it to a different wing/room. Use this instead of add when a fact has changed — keeps one current version instead of stale duplicates.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "drawer_id": {"type": "string", "description": "ID of the drawer to update"},
+                "content": {"type": "string", "description": "New content (omit to keep current)"},
+                "wing": {"type": "string", "description": "New wing (optional)"},
+                "room": {"type": "string", "description": "New room (optional)"},
+            },
+            "required": ["drawer_id"],
+        },
+        "handler": tool_update_drawer,
+    },
     "mempalace_search": {
-        "description": "Semantic search. Returns verbatim drawer content with similarity scores.",
+        "description": "Search the user's long-term memory (semantic + exact keyword match). USE PROACTIVELY whenever the user mentions a person, project, past decision, prior session, or anything that happened before this conversation — never guess about the past, search first. Returns verbatim drawer content with similarity scores.",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -677,7 +793,7 @@ TOOLS = {
         "handler": tool_check_duplicate,
     },
     "mempalace_add_drawer": {
-        "description": "File verbatim content into the palace. Checks for duplicates first.",
+        "description": "Save something to the user's long-term memory. USE PROACTIVELY when the user shares a lasting fact, decision, preference, or milestone worth remembering across sessions. Wing/room names are normalized (lowercase, underscores). Checks for duplicates first — if a near-duplicate exists you'll get its drawer_id with a hint to update instead.",
         "input_schema": {
             "type": "object",
             "properties": {

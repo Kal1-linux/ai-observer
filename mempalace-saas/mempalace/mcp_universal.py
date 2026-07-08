@@ -100,29 +100,47 @@ def build_http_app():
     from starlette.responses import JSONResponse, Response
     from starlette.routing import Mount, Route
 
+    from . import tenants
+
     auth_token = os.environ.get("MEMPALACE_MCP_TOKEN")
 
-    session_manager = StreamableHTTPSessionManager(app=app, json_response=False)
+    # stateless=True: each POST is handled in a task spawned from the request
+    # handler, so the tenant contextvar set below propagates into tool calls.
+    session_manager = StreamableHTTPSessionManager(app=app, json_response=False, stateless=True)
     sse_transport = SseServerTransport("/messages/")
 
-    def _authorized(request) -> bool:
-        if not auth_token:
-            return True
+    def _extract_token(request) -> str:
         header = request.headers.get("authorization", "")
-        query_token = request.query_params.get("token", "")
-        return header == f"Bearer {auth_token}" or query_token == auth_token
+        if header.startswith("Bearer "):
+            return header[len("Bearer "):]
+        return request.query_params.get("token", "")
+
+    def _authenticate(request):
+        """Return (authorized, tenant). Root token → global palace (tenant None).
+        Any key found in the tenant registry → that tenant's isolated palace."""
+        token = _extract_token(request)
+        tenant = tenants.resolve(token)
+        if tenant:
+            return True, tenant
+        if not auth_token:  # auth disabled
+            return True, None
+        return (token == auth_token), None
 
     async def handle_streamable_http(scope, receive, send):
         from starlette.requests import Request
 
-        if not _authorized(Request(scope, receive)):
+        ok, tenant = _authenticate(Request(scope, receive))
+        if not ok:
             await JSONResponse({"error": "unauthorized"}, status_code=401)(scope, receive, send)
             return
+        tenants.current_tenant.set(tenant)
         await session_manager.handle_request(scope, receive, send)
 
     async def handle_sse(request):
-        if not _authorized(request):
+        ok, tenant = _authenticate(request)
+        if not ok:
             return JSONResponse({"error": "unauthorized"}, status_code=401)
+        tenants.current_tenant.set(tenant)
         async with sse_transport.connect_sse(
             request.scope, request.receive, request._send
         ) as (read, write):
